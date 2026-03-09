@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Наша жизнь ∞ v1.8.8</title>
+  <title>Наша жизнь ∞ v1.8.8.1</title>
   <style>
     :root{
       --bg:#eef7ff;
@@ -212,7 +212,7 @@
       <div class="row">
         <div>
           <h1>Наша жизнь <span class="inf">∞</span></h1>
-          <div class="sub">Возвращаем фото аккуратно: в этой версии можно добавить одно фото к записи и увидеть его внутри полной записи.</div>
+          <div class="sub">Исправляющая версия: новая запись публикуется сверху по времени создания, а фото перед сохранением сжимается, чтобы браузер не впадал в драму.</div>
         </div>
         <button class="btn primary" type="button" onclick="openAddPage()">Добавить событие</button>
       </div>
@@ -318,8 +318,8 @@
   </div>
 
   <script>
-    var STORAGE_KEY = "our-life-v1.8.8";
-    var CATEGORY_KEY = "our-life-categories-v1.8.8";
+    var STORAGE_KEY = "our-life-v1.8.8.1";
+    var CATEGORY_KEY = "our-life-categories-v1.8.8.1";
     var DEFAULT_CATEGORIES = ["Свидание","Прогулка","Поездка","Подарок","Цветы","Другое"];
     var entries = [];
     var categories = [];
@@ -345,16 +345,28 @@
 
       if(entries.length === 0){
         entries = [
-          {id:String(Date.now()-1), title:"Первый весенний букет", date:"2026-03-08", category:"Цветы", description:"Подарил букет, а потом мы долго гуляли и просто были рядом.", photo:""},
-          {id:String(Date.now()-2), title:"Вечерняя прогулка", date:"2026-03-02", category:"Прогулка", description:"Пили кофе и болтали обо всём на свете.", photo:""}
+          {id:String(Date.now()-1), createdAt: Date.now()-1, title:"Первый весенний букет", date:"2026-03-08", category:"Цветы", description:"Подарил букет, а потом мы долго гуляли и просто были рядом.", photo:""},
+          {id:String(Date.now()-2), createdAt: Date.now()-2, title:"Вечерняя прогулка", date:"2026-03-02", category:"Прогулка", description:"Пили кофе и болтали обо всём на свете.", photo:""}
         ];
+        saveState();
+      } else {
+        for(var i=0;i<entries.length;i++){
+          if(!entries[i].createdAt) entries[i].createdAt = Date.now() - i;
+          if(typeof entries[i].photo !== "string") entries[i].photo = "";
+        }
         saveState();
       }
     }
 
     function saveState(){
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-      localStorage.setItem(CATEGORY_KEY, JSON.stringify(categories));
+      try{
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+        localStorage.setItem(CATEGORY_KEY, JSON.stringify(categories));
+        return true;
+      }catch(e){
+        alert("Не удалось сохранить данные. Скорее всего, фото слишком тяжелое для памяти браузера.");
+        return false;
+      }
     }
 
     function switchPage(name){
@@ -498,13 +510,14 @@
         return;
       }
       categories.push(name);
-      saveState();
-      renderCategorySelects();
-      $("categoryInput").value = name;
-      renderCategoryList();
-      $("newCategoryInput").value = "";
-      renderStats();
-      showBanner("Категория добавлена.");
+      if(saveState()){
+        renderCategorySelects();
+        $("categoryInput").value = name;
+        renderCategoryList();
+        $("newCategoryInput").value = "";
+        renderStats();
+        showBanner("Категория добавлена.");
+      }
     }
 
     function removeCategory(index){
@@ -518,12 +531,13 @@
 
       categories.splice(index, 1);
       if(categories.length === 0) categories = DEFAULT_CATEGORIES.slice();
-      saveState();
-      renderCategorySelects();
-      renderCategoryList();
-      renderStats();
-      renderFeed();
-      showBanner("Категория удалена.");
+      if(saveState()){
+        renderCategorySelects();
+        renderCategoryList();
+        renderStats();
+        renderFeed();
+        showBanner("Категория удалена.");
+      }
     }
 
     function saveEntry(){
@@ -546,6 +560,7 @@
           if(entries[i].id === editingId){
             entries[i] = {
               id: editingId,
+              createdAt: Date.now(),
               title: title,
               date: date,
               category: category,
@@ -555,16 +570,18 @@
             break;
           }
         }
-        saveState();
-        renderAll();
-        resetForm();
-        switchPage("feedPage");
-        showBanner("Изменения сохранены.");
+        if(saveState()){
+          renderAll();
+          resetForm();
+          switchPage("feedPage");
+          showBanner("Изменения сохранены.");
+        }
         return;
       }
 
-      entries.unshift({
+      entries.push({
         id: String(Date.now()),
+        createdAt: Date.now(),
         title: title,
         date: date,
         category: category,
@@ -572,19 +589,21 @@
         photo: currentPhotoData || ""
       });
 
-      saveState();
-      renderAll();
-      resetForm();
-      switchPage("feedPage");
-      showBanner("Событие сохранено.");
+      if(saveState()){
+        renderAll();
+        resetForm();
+        switchPage("feedPage");
+        showBanner("Событие сохранено.");
+      }
     }
 
     function deleteEntry(id){
       if(!confirm("Удалить запись?")) return;
       entries = entries.filter(function(e){ return e.id !== id; });
-      saveState();
-      renderAll();
-      showBanner("Запись удалена.");
+      if(saveState()){
+        renderAll();
+        showBanner("Запись удалена.");
+      }
     }
 
     function renderStats(){
@@ -603,7 +622,7 @@
       var filterCat = $("filterCategory").value || "Все";
 
       var filtered = entries.slice().sort(function(a,b){
-        return String(b.date).localeCompare(String(a.date));
+        return (b.createdAt || 0) - (a.createdAt || 0);
       }).filter(function(e){
         var hay = [e.title, e.description, e.date, e.category].join(" ").toLowerCase();
         var matchQ = !q || hay.indexOf(q) !== -1;
@@ -641,6 +660,41 @@
       renderFeed();
     }
 
+
+    function compressImage(file){
+      return new Promise(function(resolve, reject){
+        var reader = new FileReader();
+        reader.onload = function(ev){
+          var img = new Image();
+          img.onload = function(){
+            var maxSide = 1200;
+            var w = img.width;
+            var h = img.height;
+            if(w > h && w > maxSide){ h = Math.round(h * maxSide / w); w = maxSide; }
+            else if(h >= w && h > maxSide){ w = Math.round(w * maxSide / h); h = maxSide; }
+
+            var canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            var ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, w, h);
+
+            var quality = 0.82;
+            var result = canvas.toDataURL("image/jpeg", quality);
+            while(result.length > 550000 && quality > 0.45){
+              quality -= 0.08;
+              result = canvas.toDataURL("image/jpeg", quality);
+            }
+            resolve(result);
+          };
+          img.onerror = reject;
+          img.src = String(ev.target.result || "");
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
     function onPhotoChange(event){
       var file = event.target.files && event.target.files[0];
       if(!file){
@@ -649,12 +703,15 @@
         return;
       }
 
-      var reader = new FileReader();
-      reader.onload = function(ev){
-        currentPhotoData = String(ev.target.result || "");
+      compressImage(file).then(function(result){
+        currentPhotoData = result;
         updatePhotoPreview();
-      };
-      reader.readAsDataURL(file);
+        showBanner("Фото подготовлено.");
+      }).catch(function(){
+        currentPhotoData = "";
+        updatePhotoPreview();
+        alert("Не удалось обработать фото.");
+      });
     }
 
     document.addEventListener("DOMContentLoaded", function(){
