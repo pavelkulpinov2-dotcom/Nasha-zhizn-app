@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Наша жизнь ∞ v1.8.8.1</title>
+  <title>Наша жизнь ∞ v1.8.8.2</title>
   <style>
     :root{
       --bg:#eef7ff;
@@ -210,9 +210,17 @@
   <div class="app">
     <div class="card hero">
       <div class="row">
+        <div class="top-right" style="margin-left:auto;position:relative;">
+          <button class="icon-btn" type="button" onclick="toggleMenu()">⇅</button>
+          <div class="menu" id="dataMenu">
+            <button type="button" onclick="exportData()">Экспорт</button>
+            <label for="importInput">Импорт</label>
+            <input id="importInput" type="file" accept="application/json" hidden>
+          </div>
+        </div>
         <div>
           <h1>Наша жизнь <span class="inf">∞</span></h1>
-          <div class="sub">Исправляющая версия: новая запись публикуется сверху по времени создания, а фото перед сохранением сжимается, чтобы браузер не впадал в драму.</div>
+          <div class="sub">Рабочая версия с экспортом и импортом. Добавляем перенос данных поверх стабильной базы, не трогая основную механику.</div>
         </div>
         <button class="btn primary" type="button" onclick="openAddPage()">Добавить событие</button>
       </div>
@@ -318,8 +326,8 @@
   </div>
 
   <script>
-    var STORAGE_KEY = "our-life-v1.8.8.1";
-    var CATEGORY_KEY = "our-life-categories-v1.8.8.1";
+    var STORAGE_KEY = "our-life-v1.8.8.2";
+    var CATEGORY_KEY = "our-life-categories-v1.8.8.2";
     var DEFAULT_CATEGORIES = ["Свидание","Прогулка","Поездка","Подарок","Цветы","Другое"];
     var entries = [];
     var categories = [];
@@ -474,6 +482,64 @@
         .replace(/</g,"&lt;")
         .replace(/>/g,"&gt;")
         .replace(/"/g,"&quot;");
+    }
+
+
+    function toggleMenu(){ $("dataMenu").classList.toggle("open"); }
+    function closeMenu(){ $("dataMenu").classList.remove("open"); }
+
+    function exportData(){
+      var payload = {
+        version: "1.8.8.2",
+        entries: entries,
+        categories: categories
+      };
+      var blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "nasha_zhizn_export_v1.8.8.2.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      closeMenu();
+      showBanner("Экспорт готов.");
+    }
+
+    function importData(event){
+      var file = event.target.files && event.target.files[0];
+      if(!file) return;
+
+      var reader = new FileReader();
+      reader.onload = function(ev){
+        try{
+          var parsed = JSON.parse(String(ev.target.result || "{}"));
+          if(Array.isArray(parsed)){
+            entries = parsed;
+          } else {
+            entries = Array.isArray(parsed.entries) ? parsed.entries : [];
+            categories = Array.isArray(parsed.categories) && parsed.categories.length ? parsed.categories : DEFAULT_CATEGORIES.slice();
+          }
+
+          if(!categories.length) categories = DEFAULT_CATEGORIES.slice();
+
+          for(var i=0;i<entries.length;i++){
+            if(!entries[i].createdAt) entries[i].createdAt = Date.now() - i;
+            if(typeof entries[i].photo !== "string") entries[i].photo = "";
+          }
+
+          if(saveState()){
+            renderAll();
+            showBanner("Импорт выполнен.");
+          }
+        }catch(e){
+          alert("Не получилось импортировать файл.");
+        }
+        event.target.value = "";
+        closeMenu();
+      };
+      reader.readAsText(file);
     }
 
     function renderCategorySelects(){
@@ -717,6 +783,11 @@
     document.addEventListener("DOMContentLoaded", function(){
       loadState();
       $("photoInput").addEventListener("change", onPhotoChange);
+      $("importInput").addEventListener("change", importData);
+      document.addEventListener("click", function(e){
+        var area = document.querySelector(".top-right");
+        if(area && !area.contains(e.target)) closeMenu();
+      });
       resetForm();
       renderAll();
     });
