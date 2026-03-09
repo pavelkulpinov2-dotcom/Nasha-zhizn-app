@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Наша жизнь ∞ v1.8.8.2.1</title>
+  <title>Наша жизнь ∞ v1.8.8.2.2</title>
   <style>
     :root{--bg:#eef7ff;--bg2:#f8fbff;--card:#ffffff;--text:#18324b;--muted:#667b91;--accent:#4e86d9;--accent-soft:#dbeeff;--line:#d7e8f7;--shadow:0 10px 28px rgba(43,84,131,.10);--ok:#2f8f60;--danger:#d85b57}
     *{box-sizing:border-box}
@@ -77,7 +77,7 @@
       <div class="row">
         <div class="hero-left">
           <h1>Наша жизнь <span class="inf">∞</span></h1>
-          <div class="sub">Аккуратная правка интерфейса: кнопка экспорта/импорта стоит нормально, логика рабочей версии не тронута.</div>
+          <div class="sub">Дневник ваших воспоминаний.</div>
         </div>
         <div class="top-right">
           <button class="icon-btn" type="button" onclick="toggleMenu()">⇅</button>
@@ -93,7 +93,7 @@
         <div class="stat"><div class="k">Всего событий</div><div class="v" id="statTotal">0</div></div>
         <div class="stat"><div class="k">Категорий</div><div class="v" id="statCats">0</div></div>
         <div class="stat"><div class="k">С фото</div><div class="v" id="statPhotos">0</div></div>
-        <div class="stat"><div class="k">Версия</div><div class="v">1.8.8.2.1</div></div>
+        <div class="stat"><div class="k">Версия</div><div class="v">1.8.8.2.2</div></div>
       </div>
       <div class="banner" id="banner">Событие сохранено.</div>
     </div>
@@ -108,10 +108,7 @@
 
     <div class="page" id="addPage">
       <div class="card form-card">
-        <div class="top-form">
-          <button class="btn" type="button" onclick="backToFeed()">← Вернуться в ленту</button>
-          <div class="muted" id="formModeText">Добавление нового события</div>
-        </div>
+        <div class="top-form"><button class="btn" type="button" onclick="backToFeed()">← Вернуться в ленту</button><div class="muted" id="formModeText">Добавление нового события</div></div>
         <div class="grid">
           <div class="field"><label>Название события</label><input id="titleInput" placeholder="Например: Вечерняя прогулка"></div>
           <div class="field"><label>Дата</label><input id="dateInput" type="date"></div>
@@ -148,12 +145,14 @@
   </div>
 
   <script>
-    const STORAGE_KEY = "our-life-v1.8.8.2.1";
-    const CATEGORY_KEY = "our-life-categories-v1.8.8.2.1";
+    const STORAGE_KEY = "our-life-v1.8.8.2.2";
+    const CATEGORY_KEY = "our-life-categories-v1.8.8.2.2";
     const DEFAULT_CATEGORIES = ["Свидание","Прогулка","Поездка","Подарок","Цветы","Другое"];
     let entries = [], categories = [], editingId = null, currentDetailId = null, currentPhotoData = "";
+
     function $(id){ return document.getElementById(id); }
     function safeParse(text, fallback){ try { return JSON.parse(text); } catch(e) { return fallback; } }
+
     function loadState(){
       const rawEntries = localStorage.getItem(STORAGE_KEY), rawCats = localStorage.getItem(CATEGORY_KEY);
       entries = rawEntries ? safeParse(rawEntries, []) : [];
@@ -171,10 +170,12 @@
         saveState();
       }
     }
+
     function saveState(){
       try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); localStorage.setItem(CATEGORY_KEY, JSON.stringify(categories)); return true; }
       catch(e){ alert("Не удалось сохранить данные. Скорее всего, фото слишком тяжелое для памяти браузера."); return false; }
     }
+
     function showBanner(text, warn=false){ const b = $("banner"); b.textContent = text; b.classList.toggle("warn", warn); b.classList.add("show"); setTimeout(() => b.classList.remove("show"), 2200); }
     function toggleMenu(){ $("dataMenu").classList.toggle("open"); }
     function closeMenu(){ $("dataMenu").classList.remove("open"); }
@@ -183,19 +184,38 @@
     function backToFeed(){ currentDetailId = null; switchPage("feedPage"); }
     function openCategoriesPage(){ switchPage("categoriesPage"); }
     function backToAddPage(){ switchPage("addPage"); }
+
     function renderCategorySelects(){
       let catOptions = "", filterOptions = '<option value="Все">Все категории</option>';
       for(const c of categories){ catOptions += '<option value="'+escapeHtml(c)+'">'+escapeHtml(c)+'</option>'; filterOptions += '<option value="'+escapeHtml(c)+'">'+escapeHtml(c)+'</option>'; }
-      $("categoryInput").innerHTML = catOptions; const prev = $("filterCategory").value || "Все"; $("filterCategory").innerHTML = filterOptions; $("filterCategory").value = (categories.includes(prev) || prev === "Все") ? prev : "Все";
+      $("categoryInput").innerHTML = catOptions;
+      const prev = $("filterCategory").value || "Все";
+      $("filterCategory").innerHTML = filterOptions;
+      $("filterCategory").value = (categories.includes(prev) || prev === "Все") ? prev : "Все";
     }
+
     function renderCategoryList(){ let html = ""; categories.forEach((c, i) => { html += '<span class="cat-chip">'+escapeHtml(c)+' <button type="button" onclick="removeCategory('+i+')">✕</button></span>'; }); $("categoryList").innerHTML = html; }
     function updatePhotoPreview(){ if(currentPhotoData){ $("photoPreview").innerHTML = '<img src="' + currentPhotoData + '" alt="Предпросмотр">'; } else { $("photoPreview").textContent = "Фото пока не выбрано"; } }
     function resetForm(){ editingId = null; currentPhotoData = ""; $("titleInput").value = ""; $("dateInput").value = new Date().toISOString().slice(0,10); $("descInput").value = ""; $("newCategoryInput").value = ""; $("photoInput").value = ""; $("formModeText").textContent = "Добавление нового события"; renderCategorySelects(); $("categoryInput").value = categories[0] || ""; renderCategoryList(); updatePhotoPreview(); }
-    function startEdit(id){ const entry = entries.find(e => e.id === id); if(!entry) return; currentDetailId = null; editingId = id; currentPhotoData = entry.photo || ""; $("titleInput").value = entry.title || ""; $("dateInput").value = entry.date || new Date().toISOString().slice(0,10); $("descInput").value = entry.description || ""; $("photoInput").value = ""; renderCategorySelects(); $("categoryInput").value = entry.category || (categories[0] || ""); $("formModeText").textContent = "Редактирование события"; updatePhotoPreview(); switchPage("addPage"); }
-    function openDetail(id){ const entry = entries.find(e => e.id === id); if(!entry) return; currentDetailId = id; $("detailCategory").textContent = entry.category || "Без категории"; $("detailTitle").textContent = entry.title || ""; $("detailMeta").innerHTML = "<span>" + escapeHtml(entry.date || "") + "</span>"; $("detailDescription").textContent = entry.description || "Без описания"; if(entry.photo){ $("detailPhoto").src = entry.photo; $("detailPhoto").style.display = "block"; } else { $("detailPhoto").style.display = "none"; $("detailPhoto").removeAttribute("src"); } switchPage("detailPage"); }
+
+    function startEdit(id){
+      const entry = entries.find(e => e.id === id); if(!entry) return;
+      currentDetailId = null; editingId = id; currentPhotoData = entry.photo || "";
+      $("titleInput").value = entry.title || ""; $("dateInput").value = entry.date || new Date().toISOString().slice(0,10); $("descInput").value = entry.description || ""; $("photoInput").value = "";
+      renderCategorySelects(); $("categoryInput").value = entry.category || (categories[0] || ""); $("formModeText").textContent = "Редактирование события"; updatePhotoPreview(); switchPage("addPage");
+    }
+
+    function openDetail(id){
+      const entry = entries.find(e => e.id === id); if(!entry) return;
+      currentDetailId = id; $("detailCategory").textContent = entry.category || "Без категории"; $("detailTitle").textContent = entry.title || ""; $("detailMeta").innerHTML = "<span>" + escapeHtml(entry.date || "") + "</span>"; $("detailDescription").textContent = entry.description || "Без описания";
+      if(entry.photo){ $("detailPhoto").src = entry.photo; $("detailPhoto").style.display = "block"; } else { $("detailPhoto").style.display = "none"; $("detailPhoto").removeAttribute("src"); }
+      switchPage("detailPage");
+    }
+
     function editCurrentDetail(){ if(currentDetailId) startEdit(currentDetailId); }
     function escapeHtml(text){ return String(text || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
     function renderStats(){ $("statTotal").textContent = entries.length; $("statCats").textContent = categories.length; $("statPhotos").textContent = entries.filter(e => e.photo).length; }
+
     function renderFeed(){
       const q = ($("searchInput").value || "").trim().toLowerCase(), filterCat = $("filterCategory").value || "Все";
       const filtered = entries.slice().sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0)).filter(e => { const hay = [e.title, e.description, e.date, e.category].join(" ").toLowerCase(); return (!q || hay.includes(q)) && (filterCat === "Все" || e.category === filterCat); });
@@ -207,7 +227,9 @@
       }
       list.innerHTML = html;
     }
+
     function renderAll(){ renderCategorySelects(); renderCategoryList(); renderStats(); renderFeed(); }
+
     function compressImage(file){
       return new Promise(function(resolve, reject){
         const reader = new FileReader();
@@ -219,7 +241,7 @@
             else if(h >= w && h > maxSide){ w = Math.round(w * maxSide / h); h = maxSide; }
             const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
             const ctx = canvas.getContext("2d"); ctx.drawImage(img, 0, 0, w, h);
-            let quality = 0.82; let result = canvas.toDataURL("image/jpeg", quality);
+            let quality = 0.82, result = canvas.toDataURL("image/jpeg", quality);
             while(result.length > 550000 && quality > 0.45){ quality -= 0.08; result = canvas.toDataURL("image/jpeg", quality); }
             resolve(result);
           };
@@ -228,17 +250,20 @@
         reader.onerror = reject; reader.readAsDataURL(file);
       });
     }
+
     function onPhotoChange(event){
       const file = event.target.files && event.target.files[0];
       if(!file){ currentPhotoData = ""; updatePhotoPreview(); return; }
       compressImage(file).then(function(result){ currentPhotoData = result; updatePhotoPreview(); showBanner("Фото подготовлено."); }).catch(function(){ currentPhotoData = ""; updatePhotoPreview(); alert("Не удалось обработать фото."); });
     }
+
     function exportData(){
-      const payload = { version: "1.8.8.2.1", entries, categories };
+      const payload = { version: "1.8.8.2.2", entries, categories };
       const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
-      const url = URL.createObjectURL(blob); const a = document.createElement("a");
-      a.href = url; a.download = "nasha_zhizn_export_v1.8.8.2.1.json"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); closeMenu(); showBanner("Экспорт готов.");
+      const url = URL.createObjectURL(blob), a = document.createElement("a");
+      a.href = url; a.download = "nasha_zhizn_export_v1.8.8.2.2.json"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); closeMenu(); showBanner("Экспорт готов.");
     }
+
     function importData(event){
       const file = event.target.files && event.target.files[0]; if(!file) return;
       const reader = new FileReader();
@@ -254,8 +279,10 @@
       };
       reader.readAsText(file);
     }
+
     function addCategory(){ const name = ($("newCategoryInput").value || "").trim(); if(!name){ alert("Введи название категории."); return; } if(categories.includes(name)){ alert("Такая категория уже есть."); return; } categories.push(name); if(saveState()){ renderCategorySelects(); $("categoryInput").value = name; renderCategoryList(); $("newCategoryInput").value = ""; renderStats(); showBanner("Категория добавлена."); } }
     function removeCategory(index){ const cat = categories[index]; if(!cat) return; if($("categoryInput").value === cat){ alert("Сначала выбери другую категорию в форме записи."); return; } categories.splice(index, 1); if(!categories.length) categories = DEFAULT_CATEGORIES.slice(); if(saveState()){ renderCategorySelects(); renderCategoryList(); renderStats(); renderFeed(); showBanner("Категория удалена."); } }
+
     function saveEntry(){
       const title = ($("titleInput").value || "").trim(), date = $("dateInput").value || "", description = ($("descInput").value || "").trim(), category = $("categoryInput").value || (categories[0] || "Другое");
       if(!title){ alert("Заполни название события."); return; }
@@ -268,13 +295,16 @@
       entries.push({ id: String(Date.now()), createdAt: Date.now(), title, date, category, description, photo: currentPhotoData || "" });
       if(saveState()){ renderAll(); resetForm(); switchPage("feedPage"); showBanner("Событие сохранено."); }
     }
+
     function deleteEntry(id){ if(!confirm("Удалить запись?")) return; entries = entries.filter(e => e.id !== id); if(saveState()){ renderAll(); showBanner("Запись удалена."); } }
+
     document.addEventListener("DOMContentLoaded", function(){
       loadState();
       $("photoInput").addEventListener("change", onPhotoChange);
       $("importInput").addEventListener("change", importData);
       document.addEventListener("click", function(e){ const area = document.querySelector(".top-right"); if(area && !area.contains(e.target)) closeMenu(); });
-      resetForm(); renderAll();
+      resetForm();
+      renderAll();
     });
   </script>
 </body>
