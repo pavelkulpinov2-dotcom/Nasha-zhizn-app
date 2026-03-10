@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Наша жизнь ∞ v1.9.3</title>
+  <title>Наша жизнь ∞ v1.9.4</title>
   <style>
     :root{--bg:#eef7ff;--bg2:#f8fbff;--card:#ffffff;--text:#18324b;--muted:#667b91;--accent:#4e86d9;--accent-soft:#dbeeff;--line:#d7e8f7;--shadow:0 10px 28px rgba(43,84,131,.10);--ok:#2f8f60;--danger:#d85b57;--warn:#d18a1e}
     *{box-sizing:border-box}
@@ -106,7 +106,7 @@
         <div class="stat"><div class="k">Всего событий</div><div class="v" id="statTotal">0</div></div>
         <div class="stat"><div class="k">Категорий</div><div class="v" id="statCats">0</div></div>
         <div class="stat"><div class="k">С фото</div><div class="v" id="statPhotos">0</div></div>
-        <div class="stat"><div class="k">Версия</div><div class="v">1.9.3</div></div>
+        <div class="stat"><div class="k">Версия</div><div class="v">1.9.4</div></div>
       </div>
       <div class="storage-card">
         <div class="storage-top">
@@ -123,7 +123,7 @@
           <div class="mini-stat"><div class="k">Разница браузер / приложение</div><div class="v" id="usageDelta">0 Б</div></div>
         </div>
         <div class="storage-bar"><div class="storage-fill" id="storageFill"></div></div>
-        <div class="storage-note" id="storageNote">Теперь запись может хранить до двух фото. Если браузерные цифры пляшут отдельно — это, как и раньше, проделки браузера, а не поломка базы.</div>
+        <div class="storage-note" id="storageNote">Лента теперь умеет сортироваться по дате самого события. Наконец-то хронология перестала шалить.</div>
       </div>
       <div class="banner" id="banner">Событие сохранено.</div>
     </div>
@@ -132,6 +132,10 @@
       <div class="card toolbar">
         <input id="searchInput" placeholder="Поиск по названию и описанию..." oninput="renderFeed()">
         <select id="filterCategory" onchange="renderFeed()"></select>
+        <select id="sortMode" onchange="changeSortMode()">
+          <option value="eventDateDesc">Сначала новые события</option>
+          <option value="createdAtDesc">Сначала недавно добавленные</option>
+        </select>
       </div>
       <div class="list" id="feedList"></div>
     </div>
@@ -144,7 +148,7 @@
         </div>
         <div class="grid">
           <div class="field"><label>Название события</label><input id="titleInput" placeholder="Например: Вечерняя прогулка"></div>
-          <div class="field"><label>Дата</label><input id="dateInput" type="date"></div>
+          <div class="field"><label>Дата события</label><input id="dateInput" type="date"></div>
           <div class="field"><label>Категория</label><select id="categoryInput"></select></div>
           <div class="field"><label>Настройки</label><button class="btn" type="button" onclick="openCategoriesPage()" style="width:100%">Редактировать категории</button></div>
           <div class="field full"><label>Описание</label><textarea id="descInput" placeholder="Что было, чем запомнился день, какие эмоции остались..."></textarea></div>
@@ -154,7 +158,12 @@
             <div class="hint">Можно прикрепить до двух фото. Они автоматически сжимаются перед сохранением и хранятся в IndexedDB.</div>
             <div class="preview-grid" id="photoPreviewGrid"></div>
           </div>
-          <div class="field full"><div class="actions"><button class="btn ok" type="button" onclick="saveEntry()">Сохранить событие</button><button class="btn" type="button" onclick="resetForm()">Очистить форму</button></div></div>
+          <div class="field full">
+            <div class="actions">
+              <button class="btn ok" type="button" onclick="saveEntry()">Сохранить событие</button>
+              <button class="btn" type="button" onclick="resetForm()">Очистить форму</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -183,13 +192,14 @@
   </div>
 
   <script>
-    const APP_VERSION = "1.9.3";
+    const APP_VERSION = "1.9.4";
     const DB_NAME = "our-life-v1-9-db";
     const DB_VERSION = 1;
     const ENTRY_STORE = "entries";
     const META_STORE = "meta";
     const STORAGE_KEY = "our-life-v1.8.8.2.4";
     const CATEGORY_KEY = "our-life-categories-v1.8.8.2.4";
+    const SORT_MODE_KEY = "our-life-sort-mode-v1.9.4";
     const DEFAULT_CATEGORIES = ["Свидание","Прогулка","Поездка","Подарок","Цветы","Другое"];
     const LEGACY_SEED = [
       {id:String(Date.now()-1), createdAt: Date.now()-1, title:"Первый весенний букет", date:"2026-03-08", category:"Цветы", description:"Подарил букет, а потом мы долго гуляли и просто были рядом.", photos:[]},
@@ -198,6 +208,7 @@
 
     let db = null;
     let entries = [], categories = [], editingId = null, currentDetailId = null, currentPhotosData = [];
+    let sortMode = localStorage.getItem(SORT_MODE_KEY) || "eventDateDesc";
 
     function $(id){ return document.getElementById(id); }
     function safeParse(text, fallback){ try { return JSON.parse(text); } catch(e) { return fallback; } }
@@ -248,8 +259,30 @@
         for(const p of (entry.photos || [])){ photo += roughTextBytes(p); }
       }
       for(const category of categories) total += roughTextBytes(category);
-      total += roughTextBytes(JSON.stringify({version:APP_VERSION,count:entries.length,categories:categories.length}));
+      total += roughTextBytes(JSON.stringify({version:APP_VERSION,count:entries.length,categories:categories.length,sortMode}));
       return { totalBytes: total, photoBytes: photo };
+    }
+
+    function getEventDateTimestamp(entry){
+      if(!entry || !entry.date) return 0;
+      const t = Date.parse(entry.date + "T00:00:00");
+      return Number.isFinite(t) ? t : 0;
+    }
+
+    function compareEntries(a, b){
+      if(sortMode === "createdAtDesc"){
+        return (b.createdAt || 0) - (a.createdAt || 0);
+      }
+      const eventDiff = getEventDateTimestamp(b) - getEventDateTimestamp(a);
+      if(eventDiff !== 0) return eventDiff;
+      return (b.createdAt || 0) - (a.createdAt || 0);
+    }
+
+    function changeSortMode(){
+      sortMode = $("sortMode").value || "eventDateDesc";
+      localStorage.setItem(SORT_MODE_KEY, sortMode);
+      renderFeed();
+      showBanner(sortMode === "eventDateDesc" ? "Лента сортируется по дате события." : "Лента сортируется по дате добавления.");
     }
 
     function showBanner(text, warn=false){
@@ -386,11 +419,11 @@
         }
 
         if(Math.abs(delta) > 1024 * 1024){
-          note.textContent = "Браузерная оценка заметно отличается от размера данных приложения. Это не обязательно баг базы: браузер считает место приблизительно и может обновлять его с задержкой.";
+          note.textContent = "Браузерная оценка заметно отличается от размера данных приложения. Это не обязательно баг базы: браузер считает место приблизительно и любит задержки.";
         } else if(percent >= 75){
           note.textContent = "Места ещё хватает, но фото уже начинают заметнее есть квоту. Экспорт иногда — очень разумная страховка.";
         } else {
-          note.textContent = "Теперь запись может хранить до двух фото. Следи в первую очередь за «Данными приложения»: это честнее, чем браузерное шаманство.";
+          note.textContent = "Лента теперь сортируется по дате события или по дате добавления. Следи за «Данными приложения»: это честнее, чем браузерное шаманство.";
         }
       }catch(e){
         summary.textContent = "Не удалось получить оценку хранилища.";
@@ -423,6 +456,7 @@
       const prev = $("filterCategory").value || "Все";
       $("filterCategory").innerHTML = filterOptions;
       $("filterCategory").value = (categories.includes(prev) || prev === "Все") ? prev : "Все";
+      $("sortMode").value = sortMode;
     }
 
     function renderCategoryList(){
@@ -516,7 +550,7 @@
     function renderFeed(){
       const q = ($("searchInput").value || "").trim().toLowerCase();
       const filterCat = $("filterCategory").value || "Все";
-      const filtered = entries.slice().sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0)).filter(e => {
+      const filtered = entries.slice().sort(compareEntries).filter(e => {
         const hay = [e.title, e.description, e.date, e.category].join(" ").toLowerCase();
         return (!q || hay.includes(q)) && (filterCat === "Все" || e.category === filterCat);
       });
@@ -595,12 +629,12 @@
     }
 
     function exportData(){
-      const payload = { version: APP_VERSION, exportedAt: new Date().toISOString(), entries, categories };
+      const payload = { version: APP_VERSION, exportedAt: new Date().toISOString(), sortMode, entries, categories };
       const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "nasha_zhizn_export_v1.9.3.json";
+      a.download = "nasha_zhizn_export_v1.9.4.json";
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -609,13 +643,17 @@
       showBanner("Экспорт готов.");
     }
 
-    async function replaceAllData(importedEntries, importedCategories){
+    async function replaceAllData(importedEntries, importedCategories, importedSortMode){
       await idbClear(ENTRY_STORE);
       const normalizedEntries = importedEntries.map((e, index) => normalizeEntry(e, index));
       for(const entry of normalizedEntries) await idbPut(ENTRY_STORE, entry);
       categories = importedCategories.length ? importedCategories.map(c => String(c)) : DEFAULT_CATEGORIES.slice();
       await saveCategories();
       entries = normalizedEntries;
+      if(importedSortMode === "eventDateDesc" || importedSortMode === "createdAtDesc"){
+        sortMode = importedSortMode;
+        localStorage.setItem(SORT_MODE_KEY, sortMode);
+      }
     }
 
     function importData(event){
@@ -625,13 +663,14 @@
       reader.onload = async function(ev){
         try{
           const parsed = JSON.parse(String(ev.target.result || "{}"));
-          let importedEntries = [], importedCategories = DEFAULT_CATEGORIES.slice();
+          let importedEntries = [], importedCategories = DEFAULT_CATEGORIES.slice(), importedSortMode = sortMode;
           if(Array.isArray(parsed)) importedEntries = parsed;
           else {
             importedEntries = Array.isArray(parsed.entries) ? parsed.entries : [];
             importedCategories = Array.isArray(parsed.categories) && parsed.categories.length ? parsed.categories : DEFAULT_CATEGORIES.slice();
+            importedSortMode = parsed.sortMode || sortMode;
           }
-          await replaceAllData(importedEntries, importedCategories);
+          await replaceAllData(importedEntries, importedCategories, importedSortMode);
           await renderAll();
           showBanner("Импорт выполнен.");
         }catch(e){
@@ -751,6 +790,7 @@
         });
         await loadState();
         resetForm();
+        $("sortMode").value = sortMode;
         await renderAll();
       }catch(e){
         console.error(e);
