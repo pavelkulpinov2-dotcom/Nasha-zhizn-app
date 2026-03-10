@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Наша жизнь ∞ v1.8.8.2.4</title>
+  <title>Наша жизнь ∞ v1.9</title>
   <style>
     :root{--bg:#eef7ff;--bg2:#f8fbff;--card:#ffffff;--text:#18324b;--muted:#667b91;--accent:#4e86d9;--accent-soft:#dbeeff;--line:#d7e8f7;--shadow:0 10px 28px rgba(43,84,131,.10);--ok:#2f8f60;--danger:#d85b57}
     *{box-sizing:border-box}
@@ -16,7 +16,6 @@
     .top-right{display:flex;align-items:center;gap:10px;position:relative;flex:0 0 auto;margin-left:auto}
     h1{margin:0;font-size:34px;line-height:1.05;font-weight:800}
     .inf{color:var(--accent)}
-    .sub{margin-top:8px;color:var(--muted);line-height:1.5;max-width:420px}
     .btn,.icon-btn,input,textarea,select{font:inherit}
     .btn{border:1px solid var(--line);background:#fff;color:var(--text);border-radius:16px;padding:12px 15px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px}
     .icon-btn{width:46px;height:46px;border:1px solid var(--line);background:#fff;color:var(--text);border-radius:16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
@@ -64,21 +63,21 @@
     .detail-title{margin:0 0 10px 0;font-size:28px;font-weight:800}
     .detail-meta{display:flex;flex-wrap:wrap;gap:8px;color:var(--muted);font-size:14px;margin-bottom:12px}
     .detail-body{line-height:1.7;white-space:pre-wrap}
-    .preview-box{margin-top:10px;border:1px dashed var(--line);border-radius:16px;background:#fbfdff;padding:12px;min-height:88px;display:flex;align-items:center;justify-content:center;color:var(--muted);overflow:hidden}
-    .preview-box img,.detail-photo{width:100%;object-fit:cover;border-radius:12px;display:block}
-    .preview-box img{max-height:260px}
-    .detail-photo{margin-top:16px;border:1px solid var(--line);max-height:420px;background:#f5f9fd}
-    @media (max-width:700px){h1{font-size:30px}.sub{max-width:none}.top-right{gap:8px}.btn.primary{padding:12px 14px;min-width:132px}.grid{grid-template-columns:1fr}}
+    .preview-grid,.detail-photo-grid,.feed-thumb-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .preview-item{border:1px dashed var(--line);border-radius:16px;background:#fbfdff;padding:10px;min-height:110px;display:flex;align-items:center;justify-content:center;color:var(--muted);overflow:hidden}
+    .preview-item img,.detail-photo,.feed-thumb img{width:100%;object-fit:cover;border-radius:12px;display:block}
+    .preview-item img{max-height:180px}
+    .detail-photo{border:1px solid var(--line);max-height:320px;background:#f5f9fd}
+    .feed-thumb img{height:90px}
+    .hidden{display:none !important}
+    @media (max-width:700px){h1{font-size:30px}.top-right{gap:8px}.btn.primary{padding:12px 14px;min-width:132px}.grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
   <div class="app">
     <div class="card hero">
       <div class="row">
-        <div class="hero-left">
-          <h1>Наша жизнь <span class="inf">∞</span></h1>
-          
-        </div>
+        <div class="hero-left"><h1>Наша жизнь <span class="inf">∞</span></h1></div>
         <div class="top-right">
           <button class="icon-btn" type="button" onclick="toggleMenu()">⇅</button>
           <div class="menu" id="dataMenu">
@@ -93,7 +92,7 @@
         <div class="stat"><div class="k">Всего событий</div><div class="v" id="statTotal">0</div></div>
         <div class="stat"><div class="k">Категорий</div><div class="v" id="statCats">0</div></div>
         <div class="stat"><div class="k">С фото</div><div class="v" id="statPhotos">0</div></div>
-        <div class="stat"><div class="k">Версия</div><div class="v">1.8.8.2.4</div></div>
+        <div class="stat"><div class="k">Версия</div><div class="v">1.9</div></div>
       </div>
       <div class="banner" id="banner">Событие сохранено.</div>
     </div>
@@ -115,7 +114,15 @@
           <div class="field"><label>Категория</label><select id="categoryInput"></select></div>
           <div class="field"><label>Настройки</label><button class="btn" type="button" onclick="openCategoriesPage()" style="width:100%">Редактировать категории</button></div>
           <div class="field full"><label>Описание</label><textarea id="descInput" placeholder="Что было, чем запомнился день, какие эмоции остались..."></textarea></div>
-          <div class="field full"><label>Фото</label><input id="photoInput" type="file" accept="image/*"><div class="hint">Одно фото на запись. Фото автоматически сжимается перед сохранением.</div><div class="preview-box" id="photoPreview">Фото пока не выбрано</div></div>
+          <div class="field full"><label>Фото 1</label><input id="photoInput1" type="file" accept="image/*"></div>
+          <div class="field full">
+            <label>Фото 2</label><input id="photoInput2" type="file" accept="image/*">
+            <div class="hint">В версии 1.9 можно сохранить до 2 фото. Фото автоматически сжимаются и хранятся в IndexedDB.</div>
+            <div class="preview-grid">
+              <div class="preview-item" id="photoPreview1">Фото 1 не выбрано</div>
+              <div class="preview-item" id="photoPreview2">Фото 2 не выбрано</div>
+            </div>
+          </div>
           <div class="field full"><div class="actions"><button class="btn ok" type="button" onclick="saveEntry()">Сохранить событие</button><button class="btn" type="button" onclick="resetForm()">Очистить форму</button></div></div>
         </div>
       </div>
@@ -139,44 +146,26 @@
         <h2 class="detail-title" id="detailTitle">Название записи</h2>
         <div class="detail-meta" id="detailMeta"></div>
         <div class="detail-body" id="detailDescription">Описание записи</div>
-        <img id="detailPhoto" class="detail-photo" alt="Фото записи" style="display:none;">
+        <div class="detail-photo-grid hidden" id="detailPhotoGrid">
+          <img id="detailPhoto1" class="detail-photo hidden" alt="Фото 1 записи">
+          <img id="detailPhoto2" class="detail-photo hidden" alt="Фото 2 записи">
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-    const STORAGE_KEY = "our-life-v1.8.8.2.4";
-    const CATEGORY_KEY = "our-life-categories-v1.8.8.2.4";
+    const DB_NAME = "our-life-v1.9-db";
+    const DB_VERSION = 1;
+    const STORE_NAME = "app_state";
+    const LEGACY_KEYS = ["our-life-v1.8.8.2.4","our-life-v1.8.8.2.3","our-life-v1.8.8.2.2","our-life-v1.8.8.2.1","our-life-v1.8.8.1"];
+    const LEGACY_CAT_KEYS = ["our-life-categories-v1.8.8.2.4","our-life-categories-v1.8.8.2.3","our-life-categories-v1.8.8.2.2","our-life-categories-v1.8.8.2.1","our-life-categories-v1.8.8.1"];
     const DEFAULT_CATEGORIES = ["Свидание","Прогулка","Поездка","Подарок","Цветы","Другое"];
-    let entries = [], categories = [], editingId = null, currentDetailId = null, currentPhotoData = "";
+    let db = null, entries = [], categories = [], editingId = null, currentDetailId = null, currentPhotos = ["", ""];
 
     function $(id){ return document.getElementById(id); }
     function safeParse(text, fallback){ try { return JSON.parse(text); } catch(e) { return fallback; } }
-
-    function loadState(){
-      const rawEntries = localStorage.getItem(STORAGE_KEY), rawCats = localStorage.getItem(CATEGORY_KEY);
-      entries = rawEntries ? safeParse(rawEntries, []) : [];
-      categories = rawCats ? safeParse(rawCats, DEFAULT_CATEGORIES.slice()) : DEFAULT_CATEGORIES.slice();
-      if(!Array.isArray(entries)) entries = [];
-      if(!Array.isArray(categories) || !categories.length) categories = DEFAULT_CATEGORIES.slice();
-      if(entries.length === 0){
-        entries = [
-          {id:String(Date.now()-1), createdAt: Date.now()-1, title:"Первый весенний букет", date:"2026-03-08", category:"Цветы", description:"Подарил букет, а потом мы долго гуляли и просто были рядом.", photo:""},
-          {id:String(Date.now()-2), createdAt: Date.now()-2, title:"Вечерняя прогулка", date:"2026-03-02", category:"Прогулка", description:"Пили кофе и болтали обо всём на свете.", photo:""}
-        ];
-        saveState();
-      } else {
-        for(let i=0;i<entries.length;i++){ if(!entries[i].createdAt) entries[i].createdAt = Date.now()-i; if(typeof entries[i].photo !== "string") entries[i].photo = ""; }
-        saveState();
-      }
-    }
-
-    function saveState(){
-      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); localStorage.setItem(CATEGORY_KEY, JSON.stringify(categories)); return true; }
-      catch(e){ alert("Не удалось сохранить данные. Скорее всего, фото слишком тяжелое для памяти браузера."); return false; }
-    }
-
-    function showBanner(text, warn=false){ const b = $("banner"); b.textContent = text; b.classList.toggle("warn", warn); b.classList.add("show"); setTimeout(() => b.classList.remove("show"), 2200); }
+    function showBanner(text, warn=false){ const b = $("banner"); b.textContent = text; b.classList.toggle("warn", warn); b.classList.add("show"); setTimeout(() => b.classList.remove("show"), 2400); }
     function toggleMenu(){ $("dataMenu").classList.toggle("open"); }
     function closeMenu(){ $("dataMenu").classList.remove("open"); }
     function switchPage(name){ ["feedPage","addPage","categoriesPage","detailPage"].forEach(id => $(id).classList.remove("active")); $(name).classList.add("active"); window.scrollTo({top:0, behavior:"smooth"}); }
@@ -185,50 +174,254 @@
     function openCategoriesPage(){ switchPage("categoriesPage"); }
     function backToAddPage(){ switchPage("addPage"); }
 
+    function openDb(){
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = function(ev){
+          const d = ev.target.result;
+          if(!d.objectStoreNames.contains(STORE_NAME)) d.createObjectStore(STORE_NAME, { keyPath: "key" });
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function dbGet(key){
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, "readonly");
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.get(key);
+        req.onsuccess = () => resolve(req.result ? req.result.value : undefined);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function dbSet(key, value){
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.put({ key, value });
+        req.onsuccess = () => resolve(true);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function saveState(){
+      try{
+        await dbSet("entries", entries);
+        await dbSet("categories", categories);
+        return true;
+      }catch(e){
+        alert("Не удалось сохранить данные. Скорее всего, фото слишком тяжелые даже после сжатия.");
+        return false;
+      }
+    }
+
+    function readLegacyState(){
+      for(let i=0;i<LEGACY_KEYS.length;i++){
+        const e = localStorage.getItem(LEGACY_KEYS[i]);
+        const c = localStorage.getItem(LEGACY_CAT_KEYS[i]);
+        if(e){
+          return {
+            entries: safeParse(e, []),
+            categories: c ? safeParse(c, DEFAULT_CATEGORIES.slice()) : DEFAULT_CATEGORIES.slice()
+          };
+        }
+      }
+      return null;
+    }
+
+    async function loadState(){
+      entries = await dbGet("entries") || [];
+      categories = await dbGet("categories") || DEFAULT_CATEGORIES.slice();
+      const migrated = await dbGet("migrated");
+
+      if((!entries || !entries.length) && !migrated){
+        const legacy = readLegacyState();
+        if(legacy && Array.isArray(legacy.entries) && legacy.entries.length){
+          entries = legacy.entries.map((e, index) => ({
+            id: e && e.id ? String(e.id) : String(Date.now() + index),
+            createdAt: e && e.createdAt ? e.createdAt : (Date.now() - index),
+            title: e && e.title ? String(e.title) : "",
+            date: e && e.date ? String(e.date) : "",
+            category: e && e.category ? String(e.category) : "Другое",
+            description: e && e.description ? String(e.description) : "",
+            photos: Array.isArray(e && e.photos) ? e.photos.filter(Boolean).slice(0,2) : ((e && e.photo) ? [String(e.photo)] : [])
+          }));
+          categories = Array.isArray(legacy.categories) && legacy.categories.length ? legacy.categories.map(String) : DEFAULT_CATEGORIES.slice();
+          await saveState();
+        }
+        await dbSet("migrated", true);
+      }
+
+      if(!Array.isArray(entries)) entries = [];
+      if(!Array.isArray(categories) || !categories.length) categories = DEFAULT_CATEGORIES.slice();
+
+      if(entries.length === 0){
+        entries = [
+          {id:String(Date.now()-1), createdAt:Date.now()-1, title:"Первый весенний букет", date:"2026-03-08", category:"Цветы", description:"Подарил букет, а потом мы долго гуляли и просто были рядом.", photos:[]},
+          {id:String(Date.now()-2), createdAt:Date.now()-2, title:"Вечерняя прогулка", date:"2026-03-02", category:"Прогулка", description:"Пили кофе и болтали обо всём на свете.", photos:[]}
+        ];
+        await saveState();
+      } else {
+        entries = entries.map((e, index) => ({
+          id: e && e.id ? String(e.id) : String(Date.now() + index),
+          createdAt: e && e.createdAt ? e.createdAt : (Date.now() - index),
+          title: e && e.title ? String(e.title) : "",
+          date: e && e.date ? String(e.date) : "",
+          category: e && e.category ? String(e.category) : "Другое",
+          description: e && e.description ? String(e.description) : "",
+          photos: Array.isArray(e && e.photos) ? e.photos.filter(Boolean).slice(0,2) : ((e && e.photo) ? [String(e.photo)] : [])
+        }));
+        await saveState();
+      }
+    }
+
     function renderCategorySelects(){
       let catOptions = "", filterOptions = '<option value="Все">Все категории</option>';
-      for(const c of categories){ catOptions += '<option value="'+escapeHtml(c)+'">'+escapeHtml(c)+'</option>'; filterOptions += '<option value="'+escapeHtml(c)+'">'+escapeHtml(c)+'</option>'; }
+      for(const c of categories){
+        catOptions += '<option value="'+escapeHtml(c)+'">'+escapeHtml(c)+'</option>';
+        filterOptions += '<option value="'+escapeHtml(c)+'">'+escapeHtml(c)+'</option>';
+      }
       $("categoryInput").innerHTML = catOptions;
       const prev = $("filterCategory").value || "Все";
       $("filterCategory").innerHTML = filterOptions;
       $("filterCategory").value = (categories.includes(prev) || prev === "Все") ? prev : "Все";
     }
 
-    function renderCategoryList(){ let html = ""; categories.forEach((c, i) => { html += '<span class="cat-chip">'+escapeHtml(c)+' <button type="button" onclick="removeCategory('+i+')">✕</button></span>'; }); $("categoryList").innerHTML = html; }
-    function updatePhotoPreview(){ if(currentPhotoData){ $("photoPreview").innerHTML = '<img src="' + currentPhotoData + '" alt="Предпросмотр">'; } else { $("photoPreview").textContent = "Фото пока не выбрано"; } }
-    function resetForm(){ editingId = null; currentPhotoData = ""; $("titleInput").value = ""; $("dateInput").value = new Date().toISOString().slice(0,10); $("descInput").value = ""; $("newCategoryInput").value = ""; $("photoInput").value = ""; $("formModeText").textContent = "Добавление нового события"; renderCategorySelects(); $("categoryInput").value = categories[0] || ""; renderCategoryList(); updatePhotoPreview(); }
+    function renderCategoryList(){
+      let html = "";
+      categories.forEach((c, i) => {
+        html += '<span class="cat-chip">'+escapeHtml(c)+' <button type="button" onclick="removeCategory('+i+')">✕</button></span>';
+      });
+      $("categoryList").innerHTML = html;
+    }
+
+    function updatePhotoPreview(slot){
+      const el = $("photoPreview" + (slot + 1));
+      const src = currentPhotos[slot];
+      if(src){
+        el.innerHTML = '<img src="' + src + '" alt="Предпросмотр">';
+      } else {
+        el.textContent = "Фото " + (slot + 1) + " не выбрано";
+      }
+    }
+
+    function updateAllPhotoPreviews(){ updatePhotoPreview(0); updatePhotoPreview(1); }
+
+    function resetForm(){
+      editingId = null;
+      currentPhotos = ["",""];
+      $("titleInput").value = "";
+      $("dateInput").value = new Date().toISOString().slice(0,10);
+      $("descInput").value = "";
+      $("newCategoryInput").value = "";
+      $("photoInput1").value = "";
+      $("photoInput2").value = "";
+      $("formModeText").textContent = "Добавление нового события";
+      renderCategorySelects();
+      $("categoryInput").value = categories[0] || "";
+      renderCategoryList();
+      updateAllPhotoPreviews();
+    }
 
     function startEdit(id){
-      const entry = entries.find(e => e.id === id); if(!entry) return;
-      currentDetailId = null; editingId = id; currentPhotoData = entry.photo || "";
-      $("titleInput").value = entry.title || ""; $("dateInput").value = entry.date || new Date().toISOString().slice(0,10); $("descInput").value = entry.description || ""; $("photoInput").value = "";
-      renderCategorySelects(); $("categoryInput").value = entry.category || (categories[0] || ""); $("formModeText").textContent = "Редактирование события"; updatePhotoPreview(); switchPage("addPage");
+      const entry = entries.find(e => e.id === id);
+      if(!entry) return;
+      currentDetailId = null;
+      editingId = id;
+      currentPhotos = [(entry.photos && entry.photos[0]) || "", (entry.photos && entry.photos[1]) || ""];
+      $("titleInput").value = entry.title || "";
+      $("dateInput").value = entry.date || new Date().toISOString().slice(0,10);
+      $("descInput").value = entry.description || "";
+      $("photoInput1").value = "";
+      $("photoInput2").value = "";
+      renderCategorySelects();
+      $("categoryInput").value = entry.category || (categories[0] || "");
+      $("formModeText").textContent = "Редактирование события";
+      updateAllPhotoPreviews();
+      switchPage("addPage");
     }
 
     function openDetail(id){
-      const entry = entries.find(e => e.id === id); if(!entry) return;
-      currentDetailId = id; $("detailCategory").textContent = entry.category || "Без категории"; $("detailTitle").textContent = entry.title || ""; $("detailMeta").innerHTML = "<span>" + escapeHtml(entry.date || "") + "</span>"; $("detailDescription").textContent = entry.description || "Без описания";
-      if(entry.photo){ $("detailPhoto").src = entry.photo; $("detailPhoto").style.display = "block"; } else { $("detailPhoto").style.display = "none"; $("detailPhoto").removeAttribute("src"); }
+      const entry = entries.find(e => e.id === id);
+      if(!entry) return;
+      currentDetailId = id;
+      $("detailCategory").textContent = entry.category || "Без категории";
+      $("detailTitle").textContent = entry.title || "";
+      $("detailMeta").innerHTML = "<span>" + escapeHtml(entry.date || "") + "</span>";
+      $("detailDescription").textContent = entry.description || "Без описания";
+
+      const grid = $("detailPhotoGrid");
+      const p1 = $("detailPhoto1");
+      const p2 = $("detailPhoto2");
+      const photos = Array.isArray(entry.photos) ? entry.photos.filter(Boolean).slice(0,2) : [];
+
+      if(photos.length){
+        grid.classList.remove("hidden");
+        if(photos[0]){ p1.src = photos[0]; p1.classList.remove("hidden"); } else { p1.classList.add("hidden"); p1.removeAttribute("src"); }
+        if(photos[1]){ p2.src = photos[1]; p2.classList.remove("hidden"); } else { p2.classList.add("hidden"); p2.removeAttribute("src"); }
+      } else {
+        grid.classList.add("hidden");
+        p1.classList.add("hidden"); p1.removeAttribute("src");
+        p2.classList.add("hidden"); p2.removeAttribute("src");
+      }
+
       switchPage("detailPage");
     }
 
     function editCurrentDetail(){ if(currentDetailId) startEdit(currentDetailId); }
     function escapeHtml(text){ return String(text || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
-    function renderStats(){ $("statTotal").textContent = entries.length; $("statCats").textContent = categories.length; $("statPhotos").textContent = entries.filter(e => e.photo).length; }
+    function renderStats(){ $("statTotal").textContent = entries.length; $("statCats").textContent = categories.length; let withPhotos = 0; entries.forEach(e => { if(Array.isArray(e.photos) && e.photos.some(Boolean)) withPhotos++; }); $("statPhotos").textContent = withPhotos; }
+        function renderFeed(){
+      const q = ($("searchInput").value || "").trim().toLowerCase();
+      const filterCat = $("filterCategory").value || "Все";
 
-    function renderFeed(){
-      const q = ($("searchInput").value || "").trim().toLowerCase(), filterCat = $("filterCategory").value || "Все";
-      const filtered = entries.slice().sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0)).filter(e => { const hay = [e.title, e.description, e.date, e.category].join(" ").toLowerCase(); return (!q || hay.includes(q)) && (filterCat === "Все" || e.category === filterCat); });
+      const filtered = entries.slice()
+        .sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0))
+        .filter(e => {
+          const hay = [e.title, e.description, e.date, e.category].join(" ").toLowerCase();
+          return (!q || hay.includes(q)) && (filterCat === "Все" || e.category === filterCat);
+        });
+
       const list = $("feedList");
-      if(!filtered.length){ list.innerHTML = '<div class="card empty">Пока пусто. Добавь первое событие — и лента оживёт.</div>'; return; }
+      if(!filtered.length){
+        list.innerHTML = '<div class="card empty">Пока пусто. Добавь первое событие — и лента оживёт.</div>';
+        return;
+      }
+
       let html = "";
       for(const e of filtered){
-        html += '<div class="card entry"><div class="badge">'+escapeHtml(e.category || "Без категории")+'</div><button class="entry-title" type="button" onclick="openDetail(\'' + e.id + '\')">' + escapeHtml(e.title) + '</button><div class="meta"><span>' + escapeHtml(e.date) + '</span>' + (e.photo ? '<span>• С фото</span>' : '') + '</div><div class="desc">' + escapeHtml(e.description || "Без описания") + '</div><div class="actions"><button class="btn" type="button" onclick="startEdit(\'' + e.id + '\')">Редактировать</button><button class="btn danger" type="button" onclick="deleteEntry(\'' + e.id + '\')">Удалить</button></div></div>';
+        const photos = Array.isArray(e.photos) ? e.photos.filter(Boolean).slice(0,2) : [];
+        html += '<div class="card entry">';
+        html += '<div class="badge">'+escapeHtml(e.category || "Без категории")+'</div>';
+        html += '<button class="entry-title" type="button" onclick="openDetail(\\'' + e.id + '\\')">' + escapeHtml(e.title) + '</button>';
+        html += '<div class="meta"><span>' + escapeHtml(e.date) + '</span>' + (photos.length ? '<span>• ' + photos.length + ' фото</span>' : '') + '</div>';
+        html += '<div class="desc">' + escapeHtml(e.description || "Без описания") + '</div>';
+
+        if(photos.length){
+          html += '<div class="feed-thumb-grid">';
+          photos.forEach(src => {
+            html += '<div class="feed-thumb"><img src="' + src + '" alt="Миниатюра"></div>';
+          });
+          html += '</div>';
+        }
+
+        html += '<div class="actions">';
+        html += '<button class="btn" type="button" onclick="startEdit(\\'' + e.id + '\\')">Редактировать</button>';
+        html += '<button class="btn danger" type="button" onclick="deleteEntry(\\'' + e.id + '\\')">Удалить</button>';
+        html += '</div></div>';
       }
+
       list.innerHTML = html;
     }
 
-    function renderAll(){ renderCategorySelects(); renderCategoryList(); renderStats(); renderFeed(); }
+    function renderAll(){
+      renderCategorySelects();
+      renderCategoryList();
+      renderStats();
+      renderFeed();
+    }
 
     function compressImage(file){
       return new Promise(function(resolve, reject){
@@ -236,41 +429,85 @@
         reader.onload = function(ev){
           const img = new Image();
           img.onload = function(){
-            let w = img.width, h = img.height, maxSide = 1200;
-            if(w > h && w > maxSide){ h = Math.round(h * maxSide / w); w = maxSide; }
-            else if(h >= w && h > maxSide){ w = Math.round(w * maxSide / h); h = maxSide; }
-            const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
-            const ctx = canvas.getContext("2d"); ctx.drawImage(img, 0, 0, w, h);
-            let quality = 0.82, result = canvas.toDataURL("image/jpeg", quality);
-            while(result.length > 550000 && quality > 0.45){ quality -= 0.08; result = canvas.toDataURL("image/jpeg", quality); }
+            let w = img.width, h = img.height, maxSide = 1400;
+
+            if(w > h && w > maxSide){
+              h = Math.round(h * maxSide / w);
+              w = maxSide;
+            } else if(h >= w && h > maxSide){
+              w = Math.round(w * maxSide / h);
+              h = maxSide;
+            }
+
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, w, h);
+
+            let quality = 0.82;
+            let result = canvas.toDataURL("image/jpeg", quality);
+
+            while(result.length > 700000 && quality > 0.44){
+              quality -= 0.08;
+              result = canvas.toDataURL("image/jpeg", quality);
+            }
+
             resolve(result);
           };
-          img.onerror = reject; img.src = String(ev.target.result || "");
+          img.onerror = reject;
+          img.src = String(ev.target.result || "");
         };
-        reader.onerror = reject; reader.readAsDataURL(file);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
       });
     }
 
-    function onPhotoChange(event){
+    function handlePhotoInput(slot, event){
       const file = event.target.files && event.target.files[0];
-      if(!file){ currentPhotoData = ""; updatePhotoPreview(); return; }
-      compressImage(file).then(function(result){ currentPhotoData = result; updatePhotoPreview(); showBanner("Фото подготовлено."); }).catch(function(){ currentPhotoData = ""; updatePhotoPreview(); alert("Не удалось обработать фото."); });
+      if(!file){
+        currentPhotos[slot] = "";
+        updatePhotoPreview(slot);
+        return;
+      }
+
+      compressImage(file).then(function(result){
+        currentPhotos[slot] = result;
+        updatePhotoPreview(slot);
+        showBanner("Фото " + (slot + 1) + " подготовлено.");
+      }).catch(function(){
+        currentPhotos[slot] = "";
+        updatePhotoPreview(slot);
+        alert("Не удалось обработать фото " + (slot + 1) + ".");
+      });
     }
 
     function exportData(){
-      const payload = { version: "1.8.8.2.4", entries, categories };
+      const payload = { version: "1.9", entries, categories };
       const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
-      const url = URL.createObjectURL(blob), a = document.createElement("a");
-      a.href = url; a.download = "nasha_zhizn_export_v1.8.8.2.4.json"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); closeMenu(); showBanner("Экспорт готов.");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "nasha_zhizn_export_v1.9.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      closeMenu();
+      showBanner("Экспорт готов.");
     }
 
     function importData(event){
-      const file = event.target.files && event.target.files[0]; if(!file) return;
+      const file = event.target.files && event.target.files[0];
+      if(!file) return;
+
       const reader = new FileReader();
-      reader.onload = function(ev){
+      reader.onload = async function(ev){
         try{
           const parsed = JSON.parse(String(ev.target.result || "{}"));
-          let importedEntries = [], importedCategories = DEFAULT_CATEGORIES.slice();
+          let importedEntries = [];
+          let importedCategories = DEFAULT_CATEGORIES.slice();
 
           if(Array.isArray(parsed)){
             importedEntries = parsed;
@@ -282,6 +519,10 @@
           if(!importedCategories.length) importedCategories = DEFAULT_CATEGORIES.slice();
 
           entries = importedEntries.map(function(e, index){
+            const photos = Array.isArray(e && e.photos)
+              ? e.photos.filter(Boolean).slice(0,2)
+              : ((e && e.photo) ? [String(e.photo)] : []);
+
             return {
               id: e && e.id ? String(e.id) : String(Date.now() + index),
               createdAt: e && e.createdAt ? e.createdAt : (Date.now() - index),
@@ -289,49 +530,163 @@
               date: e && e.date ? String(e.date) : "",
               category: e && e.category ? String(e.category) : "Другое",
               description: e && e.description ? String(e.description) : "",
-              photo: ""
+              photos: photos
             };
           });
 
-          categories = importedCategories.map(function(c){ return String(c); });
+          categories = importedCategories.map(String);
 
-          if(saveState()){
+          if(await saveState()){
             renderAll();
-            showBanner("Импорт выполнен без фото.");
+            showBanner("Импорт выполнен.");
           }
         }catch(e){
           alert("Не получилось импортировать файл.");
         }
-        event.target.value = ""; closeMenu();
+
+        event.target.value = "";
+        closeMenu();
       };
+
       reader.readAsText(file);
     }
 
-    function addCategory(){ const name = ($("newCategoryInput").value || "").trim(); if(!name){ alert("Введи название категории."); return; } if(categories.includes(name)){ alert("Такая категория уже есть."); return; } categories.push(name); if(saveState()){ renderCategorySelects(); $("categoryInput").value = name; renderCategoryList(); $("newCategoryInput").value = ""; renderStats(); showBanner("Категория добавлена."); } }
-    function removeCategory(index){ const cat = categories[index]; if(!cat) return; if($("categoryInput").value === cat){ alert("Сначала выбери другую категорию в форме записи."); return; } categories.splice(index, 1); if(!categories.length) categories = DEFAULT_CATEGORIES.slice(); if(saveState()){ renderCategorySelects(); renderCategoryList(); renderStats(); renderFeed(); showBanner("Категория удалена."); } }
-
-    function saveEntry(){
-      const title = ($("titleInput").value || "").trim(), date = $("dateInput").value || "", description = ($("descInput").value || "").trim(), category = $("categoryInput").value || (categories[0] || "Другое");
-      if(!title){ alert("Заполни название события."); return; }
-      if(!date){ alert("Выбери дату."); return; }
-      if(editingId){
-        for(let i=0;i<entries.length;i++){ if(entries[i].id === editingId){ entries[i] = { id: editingId, createdAt: Date.now(), title, date, category, description, photo: currentPhotoData || "" }; break; } }
-        if(saveState()){ renderAll(); resetForm(); switchPage("feedPage"); showBanner("Изменения сохранены."); }
+    async function addCategory(){
+      const name = ($("newCategoryInput").value || "").trim();
+      if(!name){
+        alert("Введи название категории.");
         return;
       }
-      entries.push({ id: String(Date.now()), createdAt: Date.now(), title, date, category, description, photo: currentPhotoData || "" });
-      if(saveState()){ renderAll(); resetForm(); switchPage("feedPage"); showBanner("Событие сохранено."); }
+      if(categories.includes(name)){
+        alert("Такая категория уже есть.");
+        return;
+      }
+
+      categories.push(name);
+
+      if(await saveState()){
+        renderCategorySelects();
+        $("categoryInput").value = name;
+        renderCategoryList();
+        $("newCategoryInput").value = "";
+        renderStats();
+        showBanner("Категория добавлена.");
+      }
     }
 
-    function deleteEntry(id){ if(!confirm("Удалить запись?")) return; entries = entries.filter(e => e.id !== id); if(saveState()){ renderAll(); showBanner("Запись удалена."); } }
+    async function removeCategory(index){
+      const cat = categories[index];
+      if(!cat) return;
 
-    document.addEventListener("DOMContentLoaded", function(){
-      loadState();
-      $("photoInput").addEventListener("change", onPhotoChange);
+      if($("categoryInput").value === cat){
+        alert("Сначала выбери другую категорию в форме записи.");
+        return;
+      }
+
+      categories.splice(index, 1);
+      if(!categories.length) categories = DEFAULT_CATEGORIES.slice();
+
+      if(await saveState()){
+        renderCategorySelects();
+        renderCategoryList();
+        renderStats();
+        renderFeed();
+        showBanner("Категория удалена.");
+      }
+    }
+
+    async function saveEntry(){
+      const title = ($("titleInput").value || "").trim();
+      const date = $("dateInput").value || "";
+      const description = ($("descInput").value || "").trim();
+      const category = $("categoryInput").value || (categories[0] || "Другое");
+      const photos = currentPhotos.filter(Boolean).slice(0,2);
+
+      if(!title){
+        alert("Заполни название события.");
+        return;
+      }
+
+      if(!date){
+        alert("Выбери дату.");
+        return;
+      }
+
+      if(editingId){
+        for(let i=0;i<entries.length;i++){
+          if(entries[i].id === editingId){
+            entries[i] = {
+              id: editingId,
+              createdAt: Date.now(),
+              title,
+              date,
+              category,
+              description,
+              photos
+            };
+            break;
+          }
+        }
+
+        if(await saveState()){
+          renderAll();
+          resetForm();
+          switchPage("feedPage");
+          showBanner("Изменения сохранены.");
+        }
+        return;
+      }
+
+      entries.push({
+        id: String(Date.now()),
+        createdAt: Date.now(),
+        title,
+        date,
+        category,
+        description,
+        photos
+      });
+
+      if(await saveState()){
+        renderAll();
+        resetForm();
+        switchPage("feedPage");
+        showBanner("Событие сохранено.");
+      }
+    }
+
+    async function deleteEntry(id){
+      if(!confirm("Удалить запись?")) return;
+
+      entries = entries.filter(e => e.id !== id);
+
+      if(await saveState()){
+        renderAll();
+        showBanner("Запись удалена.");
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", async function(){
+      try{
+        db = await openDb();
+        await loadState();
+      }catch(e){
+        alert("Не удалось открыть IndexedDB. Эта версия не сможет нормально хранить 2 фото.");
+        return;
+      }
+
+      $("photoInput1").addEventListener("change", function(e){ handlePhotoInput(0, e); });
+      $("photoInput2").addEventListener("change", function(e){ handlePhotoInput(1, e); });
       $("importInput").addEventListener("change", importData);
-      document.addEventListener("click", function(e){ const area = document.querySelector(".top-right"); if(area && !area.contains(e.target)) closeMenu(); });
+
+      document.addEventListener("click", function(e){
+        const area = document.querySelector(".top-right");
+        if(area && !area.contains(e.target)) closeMenu();
+      });
+
       resetForm();
       renderAll();
+      showBanner("Версия 1.9 использует новое хранилище.");
     });
   </script>
 </body>
