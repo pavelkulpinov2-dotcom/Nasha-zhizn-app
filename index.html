@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Наша жизнь ∞ v1.8.8.2.4</title>
+  <title>Наша жизнь ∞ v1.9</title>
   <style>
     :root{--bg:#eef7ff;--bg2:#f8fbff;--card:#ffffff;--text:#18324b;--muted:#667b91;--accent:#4e86d9;--accent-soft:#dbeeff;--line:#d7e8f7;--shadow:0 10px 28px rgba(43,84,131,.10);--ok:#2f8f60;--danger:#d85b57}
     *{box-sizing:border-box}
@@ -77,7 +77,6 @@
       <div class="row">
         <div class="hero-left">
           <h1>Наша жизнь <span class="inf">∞</span></h1>
-          
         </div>
         <div class="top-right">
           <button class="icon-btn" type="button" onclick="toggleMenu()">⇅</button>
@@ -93,7 +92,7 @@
         <div class="stat"><div class="k">Всего событий</div><div class="v" id="statTotal">0</div></div>
         <div class="stat"><div class="k">Категорий</div><div class="v" id="statCats">0</div></div>
         <div class="stat"><div class="k">С фото</div><div class="v" id="statPhotos">0</div></div>
-        <div class="stat"><div class="k">Версия</div><div class="v">1.8.8.2.4</div></div>
+        <div class="stat"><div class="k">Версия</div><div class="v">1.9</div></div>
       </div>
       <div class="banner" id="banner">Событие сохранено.</div>
     </div>
@@ -115,7 +114,7 @@
           <div class="field"><label>Категория</label><select id="categoryInput"></select></div>
           <div class="field"><label>Настройки</label><button class="btn" type="button" onclick="openCategoriesPage()" style="width:100%">Редактировать категории</button></div>
           <div class="field full"><label>Описание</label><textarea id="descInput" placeholder="Что было, чем запомнился день, какие эмоции остались..."></textarea></div>
-          <div class="field full"><label>Фото</label><input id="photoInput" type="file" accept="image/*"><div class="hint">Одно фото на запись. Фото автоматически сжимается перед сохранением.</div><div class="preview-box" id="photoPreview">Фото пока не выбрано</div></div>
+          <div class="field full"><label>Фото</label><input id="photoInput" type="file" accept="image/*"><div class="hint">Одно фото на запись. Фото автоматически сжимается перед сохранением и хранится в IndexedDB.</div><div class="preview-box" id="photoPreview">Фото пока не выбрано</div></div>
           <div class="field full"><div class="actions"><button class="btn ok" type="button" onclick="saveEntry()">Сохранить событие</button><button class="btn" type="button" onclick="resetForm()">Очистить форму</button></div></div>
         </div>
       </div>
@@ -145,36 +144,25 @@
   </div>
 
   <script>
+    const APP_VERSION = "1.9";
+    const DB_NAME = "our-life-v1-9-db";
+    const DB_VERSION = 1;
+    const ENTRY_STORE = "entries";
+    const META_STORE = "meta";
     const STORAGE_KEY = "our-life-v1.8.8.2.4";
     const CATEGORY_KEY = "our-life-categories-v1.8.8.2.4";
     const DEFAULT_CATEGORIES = ["Свидание","Прогулка","Поездка","Подарок","Цветы","Другое"];
+    const LEGACY_SEED = [
+      {id:String(Date.now()-1), createdAt: Date.now()-1, title:"Первый весенний букет", date:"2026-03-08", category:"Цветы", description:"Подарил букет, а потом мы долго гуляли и просто были рядом.", photo:""},
+      {id:String(Date.now()-2), createdAt: Date.now()-2, title:"Вечерняя прогулка", date:"2026-03-02", category:"Прогулка", description:"Пили кофе и болтали обо всём на свете.", photo:""}
+    ];
+
+    let db = null;
     let entries = [], categories = [], editingId = null, currentDetailId = null, currentPhotoData = "";
 
     function $(id){ return document.getElementById(id); }
     function safeParse(text, fallback){ try { return JSON.parse(text); } catch(e) { return fallback; } }
-
-    function loadState(){
-      const rawEntries = localStorage.getItem(STORAGE_KEY), rawCats = localStorage.getItem(CATEGORY_KEY);
-      entries = rawEntries ? safeParse(rawEntries, []) : [];
-      categories = rawCats ? safeParse(rawCats, DEFAULT_CATEGORIES.slice()) : DEFAULT_CATEGORIES.slice();
-      if(!Array.isArray(entries)) entries = [];
-      if(!Array.isArray(categories) || !categories.length) categories = DEFAULT_CATEGORIES.slice();
-      if(entries.length === 0){
-        entries = [
-          {id:String(Date.now()-1), createdAt: Date.now()-1, title:"Первый весенний букет", date:"2026-03-08", category:"Цветы", description:"Подарил букет, а потом мы долго гуляли и просто были рядом.", photo:""},
-          {id:String(Date.now()-2), createdAt: Date.now()-2, title:"Вечерняя прогулка", date:"2026-03-02", category:"Прогулка", description:"Пили кофе и болтали обо всём на свете.", photo:""}
-        ];
-        saveState();
-      } else {
-        for(let i=0;i<entries.length;i++){ if(!entries[i].createdAt) entries[i].createdAt = Date.now()-i; if(typeof entries[i].photo !== "string") entries[i].photo = ""; }
-        saveState();
-      }
-    }
-
-    function saveState(){
-      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); localStorage.setItem(CATEGORY_KEY, JSON.stringify(categories)); return true; }
-      catch(e){ alert("Не удалось сохранить данные. Скорее всего, фото слишком тяжелое для памяти браузера."); return false; }
-    }
+    function escapeHtml(text){ return String(text || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 
     function showBanner(text, warn=false){ const b = $("banner"); b.textContent = text; b.classList.toggle("warn", warn); b.classList.add("show"); setTimeout(() => b.classList.remove("show"), 2200); }
     function toggleMenu(){ $("dataMenu").classList.toggle("open"); }
@@ -184,6 +172,129 @@
     function backToFeed(){ currentDetailId = null; switchPage("feedPage"); }
     function openCategoriesPage(){ switchPage("categoriesPage"); }
     function backToAddPage(){ switchPage("addPage"); }
+
+    function openDb(){
+      return new Promise(function(resolve, reject){
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = function(event){
+          const database = event.target.result;
+          if(!database.objectStoreNames.contains(ENTRY_STORE)){
+            database.createObjectStore(ENTRY_STORE, { keyPath: "id" });
+          }
+          if(!database.objectStoreNames.contains(META_STORE)){
+            database.createObjectStore(META_STORE, { keyPath: "key" });
+          }
+        };
+        request.onsuccess = function(){ resolve(request.result); };
+        request.onerror = function(){ reject(request.error || new Error("Не удалось открыть IndexedDB")); };
+      });
+    }
+
+    function tx(storeNames, mode){ return db.transaction(storeNames, mode); }
+
+    function idbGet(storeName, key){
+      return new Promise(function(resolve, reject){
+        const request = tx([storeName], "readonly").objectStore(storeName).get(key);
+        request.onsuccess = function(){ resolve(request.result); };
+        request.onerror = function(){ reject(request.error); };
+      });
+    }
+
+    function idbGetAll(storeName){
+      return new Promise(function(resolve, reject){
+        const request = tx([storeName], "readonly").objectStore(storeName).getAll();
+        request.onsuccess = function(){ resolve(request.result || []); };
+        request.onerror = function(){ reject(request.error); };
+      });
+    }
+
+    function idbPut(storeName, value){
+      return new Promise(function(resolve, reject){
+        const request = tx([storeName], "readwrite").objectStore(storeName).put(value);
+        request.onsuccess = function(){ resolve(true); };
+        request.onerror = function(){ reject(request.error); };
+      });
+    }
+
+    function idbDelete(storeName, key){
+      return new Promise(function(resolve, reject){
+        const request = tx([storeName], "readwrite").objectStore(storeName).delete(key);
+        request.onsuccess = function(){ resolve(true); };
+        request.onerror = function(){ reject(request.error); };
+      });
+    }
+
+    function idbClear(storeName){
+      return new Promise(function(resolve, reject){
+        const request = tx([storeName], "readwrite").objectStore(storeName).clear();
+        request.onsuccess = function(){ resolve(true); };
+        request.onerror = function(){ reject(request.error); };
+      });
+    }
+
+    function normalizeEntry(e, index){
+      return {
+        id: e && e.id ? String(e.id) : String(Date.now() + index),
+        createdAt: e && e.createdAt ? Number(e.createdAt) : (Date.now() - index),
+        title: e && e.title ? String(e.title) : "",
+        date: e && e.date ? String(e.date) : "",
+        category: e && e.category ? String(e.category) : "Другое",
+        description: e && e.description ? String(e.description) : "",
+        photo: e && typeof e.photo === "string" ? e.photo : ""
+      };
+    }
+
+    async function seedDatabase(){
+      categories = DEFAULT_CATEGORIES.slice();
+      entries = LEGACY_SEED.map((e, index) => normalizeEntry(e, index));
+      await Promise.all(entries.map(entry => idbPut(ENTRY_STORE, entry)));
+      await idbPut(META_STORE, { key: "categories", value: categories.slice() });
+      await idbPut(META_STORE, { key: "initialized", value: true });
+    }
+
+    async function migrateFromLegacyIfNeeded(){
+      const initialized = await idbGet(META_STORE, "initialized");
+      if(initialized && initialized.value){
+        return false;
+      }
+
+      let migratedEntries = safeParse(localStorage.getItem(STORAGE_KEY), []);
+      let migratedCategories = safeParse(localStorage.getItem(CATEGORY_KEY), DEFAULT_CATEGORIES.slice());
+      if(!Array.isArray(migratedEntries)) migratedEntries = [];
+      if(!Array.isArray(migratedCategories) || !migratedCategories.length) migratedCategories = DEFAULT_CATEGORIES.slice();
+
+      if(migratedEntries.length){
+        await idbClear(ENTRY_STORE);
+        await Promise.all(migratedEntries.map((entry, index) => idbPut(ENTRY_STORE, normalizeEntry(entry, index))));
+        await idbPut(META_STORE, { key: "categories", value: migratedCategories.map(c => String(c)) });
+        await idbPut(META_STORE, { key: "initialized", value: true });
+        return true;
+      }
+
+      await seedDatabase();
+      return false;
+    }
+
+    async function loadState(){
+      db = await openDb();
+      const migrated = await migrateFromLegacyIfNeeded();
+      const rawEntries = await idbGetAll(ENTRY_STORE);
+      const metaCategories = await idbGet(META_STORE, "categories");
+      entries = (rawEntries || []).map((entry, index) => normalizeEntry(entry, index));
+      categories = Array.isArray(metaCategories && metaCategories.value) && metaCategories.value.length ? metaCategories.value.map(c => String(c)) : DEFAULT_CATEGORIES.slice();
+      if(!entries.length){
+        await seedDatabase();
+        entries = await idbGetAll(ENTRY_STORE);
+      }
+      if(migrated){
+        showBanner("Данные перенесены в IndexedDB.");
+      }
+    }
+
+    async function saveCategories(){
+      await idbPut(META_STORE, { key: "categories", value: categories.slice() });
+      return true;
+    }
 
     function renderCategorySelects(){
       let catOptions = "", filterOptions = '<option value="Все">Все категории</option>';
@@ -213,7 +324,6 @@
     }
 
     function editCurrentDetail(){ if(currentDetailId) startEdit(currentDetailId); }
-    function escapeHtml(text){ return String(text || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
     function renderStats(){ $("statTotal").textContent = entries.length; $("statCats").textContent = categories.length; $("statPhotos").textContent = entries.filter(e => e.photo).length; }
 
     function renderFeed(){
@@ -236,13 +346,13 @@
         reader.onload = function(ev){
           const img = new Image();
           img.onload = function(){
-            let w = img.width, h = img.height, maxSide = 1200;
+            let w = img.width, h = img.height, maxSide = 1400;
             if(w > h && w > maxSide){ h = Math.round(h * maxSide / w); w = maxSide; }
             else if(h >= w && h > maxSide){ w = Math.round(w * maxSide / h); h = maxSide; }
             const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
             const ctx = canvas.getContext("2d"); ctx.drawImage(img, 0, 0, w, h);
-            let quality = 0.82, result = canvas.toDataURL("image/jpeg", quality);
-            while(result.length > 550000 && quality > 0.45){ quality -= 0.08; result = canvas.toDataURL("image/jpeg", quality); }
+            let quality = 0.86, result = canvas.toDataURL("image/jpeg", quality);
+            while(result.length > 1200000 && quality > 0.5){ quality -= 0.08; result = canvas.toDataURL("image/jpeg", quality); }
             resolve(result);
           };
           img.onerror = reject; img.src = String(ev.target.result || "");
@@ -258,48 +368,41 @@
     }
 
     function exportData(){
-      const payload = { version: "1.8.8.2.4", entries, categories };
+      const payload = { version: APP_VERSION, exportedAt: new Date().toISOString(), entries, categories };
       const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
       const url = URL.createObjectURL(blob), a = document.createElement("a");
-      a.href = url; a.download = "nasha_zhizn_export_v1.8.8.2.4.json"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); closeMenu(); showBanner("Экспорт готов.");
+      a.href = url; a.download = "nasha_zhizn_export_v1.9.json"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); closeMenu(); showBanner("Экспорт готов.");
+    }
+
+    async function replaceAllData(importedEntries, importedCategories){
+      await idbClear(ENTRY_STORE);
+      const normalizedEntries = importedEntries.map((e, index) => normalizeEntry(e, index));
+      for(const entry of normalizedEntries){
+        await idbPut(ENTRY_STORE, entry);
+      }
+      categories = importedCategories.length ? importedCategories.map(c => String(c)) : DEFAULT_CATEGORIES.slice();
+      await saveCategories();
+      entries = normalizedEntries;
     }
 
     function importData(event){
       const file = event.target.files && event.target.files[0]; if(!file) return;
       const reader = new FileReader();
-      reader.onload = function(ev){
+      reader.onload = async function(ev){
         try{
           const parsed = JSON.parse(String(ev.target.result || "{}"));
           let importedEntries = [], importedCategories = DEFAULT_CATEGORIES.slice();
-
           if(Array.isArray(parsed)){
             importedEntries = parsed;
           } else {
             importedEntries = Array.isArray(parsed.entries) ? parsed.entries : [];
             importedCategories = Array.isArray(parsed.categories) && parsed.categories.length ? parsed.categories : DEFAULT_CATEGORIES.slice();
           }
-
-          if(!importedCategories.length) importedCategories = DEFAULT_CATEGORIES.slice();
-
-          entries = importedEntries.map(function(e, index){
-            return {
-              id: e && e.id ? String(e.id) : String(Date.now() + index),
-              createdAt: e && e.createdAt ? e.createdAt : (Date.now() - index),
-              title: e && e.title ? String(e.title) : "",
-              date: e && e.date ? String(e.date) : "",
-              category: e && e.category ? String(e.category) : "Другое",
-              description: e && e.description ? String(e.description) : "",
-              photo: ""
-            };
-          });
-
-          categories = importedCategories.map(function(c){ return String(c); });
-
-          if(saveState()){
-            renderAll();
-            showBanner("Импорт выполнен без фото.");
-          }
+          await replaceAllData(importedEntries, importedCategories);
+          renderAll();
+          showBanner("Импорт выполнен.");
         }catch(e){
+          console.error(e);
           alert("Не получилось импортировать файл.");
         }
         event.target.value = ""; closeMenu();
@@ -307,31 +410,79 @@
       reader.readAsText(file);
     }
 
-    function addCategory(){ const name = ($("newCategoryInput").value || "").trim(); if(!name){ alert("Введи название категории."); return; } if(categories.includes(name)){ alert("Такая категория уже есть."); return; } categories.push(name); if(saveState()){ renderCategorySelects(); $("categoryInput").value = name; renderCategoryList(); $("newCategoryInput").value = ""; renderStats(); showBanner("Категория добавлена."); } }
-    function removeCategory(index){ const cat = categories[index]; if(!cat) return; if($("categoryInput").value === cat){ alert("Сначала выбери другую категорию в форме записи."); return; } categories.splice(index, 1); if(!categories.length) categories = DEFAULT_CATEGORIES.slice(); if(saveState()){ renderCategorySelects(); renderCategoryList(); renderStats(); renderFeed(); showBanner("Категория удалена."); } }
+    async function addCategory(){
+      const name = ($("newCategoryInput").value || "").trim();
+      if(!name){ alert("Введи название категории."); return; }
+      if(categories.includes(name)){ alert("Такая категория уже есть."); return; }
+      categories.push(name);
+      try{
+        await saveCategories();
+        renderCategorySelects(); $("categoryInput").value = name; renderCategoryList(); $("newCategoryInput").value = ""; renderStats(); showBanner("Категория добавлена.");
+      }catch(e){
+        alert("Не удалось сохранить категорию.");
+      }
+    }
 
-    function saveEntry(){
+    async function removeCategory(index){
+      const cat = categories[index]; if(!cat) return;
+      if($("categoryInput").value === cat){ alert("Сначала выбери другую категорию в форме записи."); return; }
+      categories.splice(index, 1); if(!categories.length) categories = DEFAULT_CATEGORIES.slice();
+      try{
+        await saveCategories();
+        renderCategorySelects(); renderCategoryList(); renderStats(); renderFeed(); showBanner("Категория удалена.");
+      }catch(e){
+        alert("Не удалось удалить категорию.");
+      }
+    }
+
+    async function saveEntry(){
       const title = ($("titleInput").value || "").trim(), date = $("dateInput").value || "", description = ($("descInput").value || "").trim(), category = $("categoryInput").value || (categories[0] || "Другое");
       if(!title){ alert("Заполни название события."); return; }
       if(!date){ alert("Выбери дату."); return; }
-      if(editingId){
-        for(let i=0;i<entries.length;i++){ if(entries[i].id === editingId){ entries[i] = { id: editingId, createdAt: Date.now(), title, date, category, description, photo: currentPhotoData || "" }; break; } }
-        if(saveState()){ renderAll(); resetForm(); switchPage("feedPage"); showBanner("Изменения сохранены."); }
-        return;
+
+      try{
+        if(editingId){
+          const existing = entries.find(e => e.id === editingId);
+          const updated = { id: editingId, createdAt: existing && existing.createdAt ? existing.createdAt : Date.now(), title, date, category, description, photo: currentPhotoData || "" };
+          await idbPut(ENTRY_STORE, updated);
+          entries = entries.map(entry => entry.id === editingId ? updated : entry);
+          renderAll(); resetForm(); switchPage("feedPage"); showBanner("Изменения сохранены.");
+          return;
+        }
+        const created = { id: String(Date.now()), createdAt: Date.now(), title, date, category, description, photo: currentPhotoData || "" };
+        await idbPut(ENTRY_STORE, created);
+        entries.push(created);
+        renderAll(); resetForm(); switchPage("feedPage"); showBanner("Событие сохранено.");
+      }catch(e){
+        console.error(e);
+        alert("Не удалось сохранить событие в IndexedDB.");
       }
-      entries.push({ id: String(Date.now()), createdAt: Date.now(), title, date, category, description, photo: currentPhotoData || "" });
-      if(saveState()){ renderAll(); resetForm(); switchPage("feedPage"); showBanner("Событие сохранено."); }
     }
 
-    function deleteEntry(id){ if(!confirm("Удалить запись?")) return; entries = entries.filter(e => e.id !== id); if(saveState()){ renderAll(); showBanner("Запись удалена."); } }
+    async function deleteEntry(id){
+      if(!confirm("Удалить запись?")) return;
+      try{
+        await idbDelete(ENTRY_STORE, id);
+        entries = entries.filter(e => e.id !== id);
+        renderAll(); showBanner("Запись удалена.");
+      }catch(e){
+        alert("Не удалось удалить запись.");
+      }
+    }
 
-    document.addEventListener("DOMContentLoaded", function(){
-      loadState();
-      $("photoInput").addEventListener("change", onPhotoChange);
-      $("importInput").addEventListener("change", importData);
-      document.addEventListener("click", function(e){ const area = document.querySelector(".top-right"); if(area && !area.contains(e.target)) closeMenu(); });
-      resetForm();
-      renderAll();
+    document.addEventListener("DOMContentLoaded", async function(){
+      try{
+        $("photoInput").addEventListener("change", onPhotoChange);
+        $("importInput").addEventListener("change", importData);
+        document.addEventListener("click", function(e){ const area = document.querySelector(".top-right"); if(area && !area.contains(e.target)) closeMenu(); });
+        await loadState();
+        resetForm();
+        renderAll();
+      }catch(e){
+        console.error(e);
+        showBanner("Браузер не смог открыть IndexedDB.", true);
+        alert("Не удалось запустить хранилище IndexedDB. Проверь браузер или открой приложение в другой вкладке/браузере.");
+      }
     });
   </script>
 </body>
