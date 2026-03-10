@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Наша жизнь ∞ v1.9.1</title>
+  <title>Наша жизнь ∞ v1.9.2</title>
   <style>
     :root{--bg:#eef7ff;--bg2:#f8fbff;--card:#ffffff;--text:#18324b;--muted:#667b91;--accent:#4e86d9;--accent-soft:#dbeeff;--line:#d7e8f7;--shadow:0 10px 28px rgba(43,84,131,.10);--ok:#2f8f60;--danger:#d85b57;--warn:#d18a1e}
     *{box-sizing:border-box}
@@ -35,6 +35,10 @@
     .storage-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
     .storage-title{font-size:15px;font-weight:800}
     .storage-meta{margin-top:8px;color:var(--muted);font-size:14px;line-height:1.5}
+    .storage-grid{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .mini-stat{padding:12px;border:1px solid var(--line);border-radius:16px;background:#fff}
+    .mini-stat .k{font-size:12px;color:var(--muted)}
+    .mini-stat .v{margin-top:6px;font-size:18px;font-weight:800;line-height:1.2}
     .storage-bar{margin-top:12px;height:12px;border-radius:999px;background:#e8f1fb;overflow:hidden}
     .storage-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent) 0%,#78a7ee 100%);border-radius:999px;transition:width .25s ease}
     .storage-fill.warn{background:linear-gradient(90deg,#e3a63f 0%,#f0c46d 100%)}
@@ -76,7 +80,7 @@
     .preview-box img,.detail-photo{width:100%;object-fit:cover;border-radius:12px;display:block}
     .preview-box img{max-height:260px}
     .detail-photo{margin-top:16px;border:1px solid var(--line);max-height:420px;background:#f5f9fd}
-    @media (max-width:700px){h1{font-size:30px}.top-right{gap:8px}.btn.primary{padding:12px 14px;min-width:132px}.grid{grid-template-columns:1fr}.storage-top{align-items:flex-start}}
+    @media (max-width:700px){h1{font-size:30px}.top-right{gap:8px}.btn.primary{padding:12px 14px;min-width:132px}.grid,.storage-grid{grid-template-columns:1fr}.storage-top{align-items:flex-start}}
   </style>
 </head>
 <body>
@@ -100,7 +104,7 @@
         <div class="stat"><div class="k">Всего событий</div><div class="v" id="statTotal">0</div></div>
         <div class="stat"><div class="k">Категорий</div><div class="v" id="statCats">0</div></div>
         <div class="stat"><div class="k">С фото</div><div class="v" id="statPhotos">0</div></div>
-        <div class="stat"><div class="k">Версия</div><div class="v">1.9.1</div></div>
+        <div class="stat"><div class="k">Версия</div><div class="v">1.9.2</div></div>
       </div>
       <div class="storage-card">
         <div class="storage-top">
@@ -110,8 +114,14 @@
           </div>
           <button class="btn small" type="button" id="persistBtn" onclick="requestPersistentStorage()">Защитить данные</button>
         </div>
+        <div class="storage-grid">
+          <div class="mini-stat"><div class="k">Данные приложения</div><div class="v" id="appDataSize">0 Б</div></div>
+          <div class="mini-stat"><div class="k">Фото внутри данных</div><div class="v" id="photoDataSize">0 Б</div></div>
+          <div class="mini-stat"><div class="k">Оценка браузера</div><div class="v" id="browserUsage">0 Б</div></div>
+          <div class="mini-stat"><div class="k">Разница браузер / приложение</div><div class="v" id="usageDelta">0 Б</div></div>
+        </div>
         <div class="storage-bar"><div class="storage-fill" id="storageFill"></div></div>
-        <div class="storage-note" id="storageNote">Показывается оценка браузера по месту для этого сайта. Фото — главный прожорливый зверёк.</div>
+        <div class="storage-note" id="storageNote">Теперь тут две шкалы смысла: примерный размер самих данных приложения и отдельная оценка браузера. Если они пляшут вразнобой, виноват не дневник, а браузерный шаман.</div>
       </div>
       <div class="banner" id="banner">Событие сохранено.</div>
     </div>
@@ -163,7 +173,7 @@
   </div>
 
   <script>
-    const APP_VERSION = "1.9.1";
+    const APP_VERSION = "1.9.2";
     const DB_NAME = "our-life-v1-9-db";
     const DB_VERSION = 1;
     const ENTRY_STORE = "entries";
@@ -186,11 +196,27 @@
       const value = Number(bytes || 0);
       if(!isFinite(value) || value <= 0) return "0 Б";
       const units = ["Б","КБ","МБ","ГБ","ТБ"];
-      let index = 0;
-      let size = value;
+      let index = 0, size = value;
       while(size >= 1024 && index < units.length - 1){ size /= 1024; index += 1; }
       const digits = size >= 100 || index === 0 ? 0 : size >= 10 ? 1 : 2;
       return size.toFixed(digits).replace(".", ",") + " " + units[index];
+    }
+    function roughTextBytes(text){ return new Blob([String(text || "")]).size; }
+    function calculateAppDataStats(){
+      let total = 0, photo = 0;
+      for(const entry of entries){
+        total += roughTextBytes(entry.id);
+        total += roughTextBytes(entry.createdAt);
+        total += roughTextBytes(entry.title);
+        total += roughTextBytes(entry.date);
+        total += roughTextBytes(entry.category);
+        total += roughTextBytes(entry.description);
+        total += roughTextBytes(entry.photo);
+        photo += roughTextBytes(entry.photo);
+      }
+      for(const category of categories) total += roughTextBytes(category);
+      total += roughTextBytes(JSON.stringify({version:APP_VERSION,count:entries.length,categories:categories.length}));
+      return { totalBytes: total, photoBytes: photo };
     }
 
     function showBanner(text, warn=false){ const b = $("banner"); b.textContent = text; b.classList.toggle("warn", warn); b.classList.add("show"); setTimeout(() => b.classList.remove("show"), 2200); }
@@ -277,13 +303,20 @@
     async function saveCategories(){ await idbPut(META_STORE, { key: "categories", value: categories.slice() }); return true; }
 
     async function refreshStorageInfo(){
+      const appStats = calculateAppDataStats();
+      $("appDataSize").textContent = formatBytes(appStats.totalBytes);
+      $("photoDataSize").textContent = formatBytes(appStats.photoBytes);
+
       const summary = $("storageSummary");
       const note = $("storageNote");
       const fill = $("storageFill");
       const button = $("persistBtn");
+      $("browserUsage").textContent = "Нет данных";
+      $("usageDelta").textContent = "Нет данных";
+
       if(!navigator.storage || !navigator.storage.estimate){
         summary.textContent = "Браузер не умеет показывать оценку хранилища.";
-        note.textContent = "Данные сохраняются, но точную квоту этот браузер скрывает, как шпион в плаще.";
+        note.textContent = "Размер данных приложения считаем сами, но браузерную квоту этот упрямец скрывает.";
         fill.style.width = "0%";
         button.disabled = true;
         button.textContent = "Недоступно";
@@ -294,40 +327,43 @@
         const usage = Number(estimate && estimate.usage || 0);
         const quota = Number(estimate && estimate.quota || 0);
         const percent = quota > 0 ? Math.min(100, Math.max(0, (usage / quota) * 100)) : 0;
-        summary.textContent = quota > 0 ? ("Занято " + formatBytes(usage) + " из примерно " + formatBytes(quota) + " (" + percent.toFixed(1).replace('.', ',') + "%)") : ("Занято примерно " + formatBytes(usage) + ". Общий лимит браузер не сообщил.");
+        const delta = usage - appStats.totalBytes;
+        $("browserUsage").textContent = formatBytes(usage);
+        $("usageDelta").textContent = (delta >= 0 ? "+" : "−") + formatBytes(Math.abs(delta));
+        summary.textContent = quota > 0 ? ("Браузер оценивает занятое место как " + formatBytes(usage) + " из примерно " + formatBytes(quota) + " (" + percent.toFixed(1).replace('.', ',') + "%).") : ("Браузер оценивает занятое место как " + formatBytes(usage) + ". Общий лимит он не сообщил.");
         fill.style.width = percent + "%";
         fill.classList.toggle("warn", percent >= 60 && percent < 85);
         fill.classList.toggle("danger", percent >= 85);
         let persistedState = false;
-        if(navigator.storage.persisted){ persistedState = await navigator.storage.persisted(); }
+        if(navigator.storage.persisted) persistedState = await navigator.storage.persisted();
         if(persistedState){
           button.disabled = true;
           button.textContent = "Данные защищены";
-          note.textContent = "Браузер пометил данные как более стойкие к автоматической очистке. Всё равно делай экспорт иногда: техника любит драму.";
         } else {
           button.disabled = false;
           button.textContent = "Защитить данные";
-          note.textContent = percent >= 75 ? "Места ещё хватает, но фото уже начинают есть квоту заметнее. Экспорт иногда — очень здравая привычка." : "Пока запас выглядит спокойно. Фото остаются главным пожирателем места, текст почти ничего не весит.";
+        }
+        if(Math.abs(delta) > 1024 * 1024){
+          note.textContent = "Браузерная оценка заметно отличается от размера данных приложения. Это не обязательно баг базы: браузер считает место очень приблизительно и может обновлять его с задержкой.";
+        } else if(percent >= 75){
+          note.textContent = "Места ещё хватает, но фото уже начинают заметнее есть квоту. Экспорт иногда — полезная страховка от капризов техники.";
+        } else {
+          note.textContent = "Теперь можно смотреть сразу на две цифры: примерный вес самих данных и отдельную браузерную оценку. Если удалил запись, а браузерная цифра застыла — это, скорее всего, его неточный пересчёт.";
         }
       }catch(e){
         summary.textContent = "Не удалось получить оценку хранилища.";
-        note.textContent = "Само сохранение может работать нормально, просто браузер зажал статистику.";
+        note.textContent = "Размер данных приложения считаем сами. Браузерную статистику этот хитрец зажал.";
         fill.style.width = "0%";
       }
     }
 
     async function requestPersistentStorage(){
-      if(!navigator.storage || !navigator.storage.persist){
-        showBanner("Этот браузер не поддерживает защиту данных.", true);
-        return;
-      }
+      if(!navigator.storage || !navigator.storage.persist){ showBanner("Этот браузер не поддерживает защиту данных.", true); return; }
       try{
         const granted = await navigator.storage.persist();
         await refreshStorageInfo();
         showBanner(granted ? "Браузер включил более стойкое хранение." : "Браузер не дал постоянное хранение. Экспорт остаётся страховкой.", !granted);
-      }catch(e){
-        showBanner("Не удалось запросить защиту данных.", true);
-      }
+      }catch(e){ showBanner("Не удалось запросить защиту данных.", true); }
     }
 
     function renderCategorySelects(){
@@ -405,7 +441,7 @@
       const payload = { version: APP_VERSION, exportedAt: new Date().toISOString(), entries, categories };
       const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
       const url = URL.createObjectURL(blob), a = document.createElement("a");
-      a.href = url; a.download = "nasha_zhizn_export_v1.9.1.json"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); closeMenu(); showBanner("Экспорт готов.");
+      a.href = url; a.download = "nasha_zhizn_export_v1.9.2.json"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); closeMenu(); showBanner("Экспорт готов.");
     }
 
     async function replaceAllData(importedEntries, importedCategories){
@@ -440,7 +476,7 @@
       if(!name){ alert("Введи название категории."); return; }
       if(categories.includes(name)){ alert("Такая категория уже есть."); return; }
       categories.push(name);
-      try{ await saveCategories(); renderCategorySelects(); $("categoryInput").value = name; renderCategoryList(); $("newCategoryInput").value = ""; renderStats(); showBanner("Категория добавлена."); }
+      try{ await saveCategories(); renderCategorySelects(); $("categoryInput").value = name; renderCategoryList(); $("newCategoryInput").value = ""; renderStats(); await refreshStorageInfo(); showBanner("Категория добавлена."); }
       catch(e){ alert("Не удалось сохранить категорию."); }
     }
 
@@ -448,7 +484,7 @@
       const cat = categories[index]; if(!cat) return;
       if($("categoryInput").value === cat){ alert("Сначала выбери другую категорию в форме записи."); return; }
       categories.splice(index, 1); if(!categories.length) categories = DEFAULT_CATEGORIES.slice();
-      try{ await saveCategories(); renderCategorySelects(); renderCategoryList(); renderStats(); renderFeed(); showBanner("Категория удалена."); }
+      try{ await saveCategories(); renderCategorySelects(); renderCategoryList(); renderStats(); renderFeed(); await refreshStorageInfo(); showBanner("Категория удалена."); }
       catch(e){ alert("Не удалось удалить категорию."); }
     }
 
